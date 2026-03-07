@@ -1,0 +1,17 @@
+# GetBeel - Product Hunt 数据获取工具
+# GetBeel - Product Hunt Data Fetcher
+
+# Python 版本要求
+python>=3.8
+
+# 核心依赖
+requests>=2.28.0
+flask>=2.3.0
+python-dotenv>=1.0.0
+
+# 数据处理
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# 可选依赖
+# pyyaml>=6.0  # 用于配置文件
