@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.name }} - GetBeel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header a {
+            color: white;
+            text-decoration: none;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .product-detail {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .product-image {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            background: #f0f0f0;
+        }
+
+        .product-content {
+            padding: 30px;
+        }
+
+        .product-name {
+            font-size: 2em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .product-tagline {
+            font-size: 1.3em;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .product-description {
+            color: #444;
+            line-height: 1.8;
+            margin-bottom: 25px;
+        }
+
+        .product-stats {
+            display: flex;
+            gap: 30px;
+            padding: 20px 0;
+            border-top: 1px solid #eee;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 25px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .product-meta {
+            margin-bottom: 25px;
+            color: #666;
+        }
+
+        .product-meta p {
+            margin-bottom: 8px;
+        }
+
+        .product-link {
+            display: inline-block;
+            padding: 15px 40px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+        }
+
+        .product-link:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="/">← 返回首页</a>
+    </div>
+
+    <div class="container">
+        <div class="product-detail">
+            {% if product.thumbnail_url %}
+            <img src="{{ product.thumbnail_url }}" alt="{{ product.name }}" class="product-image">
+            {% endif %}
+
+            <div class="product-content">
+                <h1 class="product-name">{{ product.name }}</h1>
+                <p class="product-tagline">{{ product.tagline }}</p>
+
+                {% if product.description %}
+                <p class="product-description">{{ product.description }}</p>
+                {% endif %}
+
+                <div class="product-stats">
+                    <div class="stat">
+                        <div class="stat-value">{{ product.votes_count }}</div>
+                        <div class="stat-label">投票数</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">{{ product.comments_count }}</div>
+                        <div class="stat-label">评论数</div>
+                    </div>
+                </div>
+
+                <div class="product-meta">
+                    <p><strong>创作者:</strong> {{ product.makers }}</p>
+                    <p><strong>发布日期:</strong> {{ product.published_at }}</p>
+                    {% if product.topics %}
+                    <p><strong>分类:</strong> {{ product.topics }}</p>
+                    {% endif %}
+                </div>
+
+                <a href="{{ product.url }}" target="_blank" class="product-link">在 Product Hunt 查看 →</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
