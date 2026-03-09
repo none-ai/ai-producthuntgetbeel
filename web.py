@@ -264,7 +264,11 @@ def product_detail(product_id: str):
                 error_message="未找到产品"
             )
 
-        return render_template("product.html", product=product)
+        # 检查是否已收藏 / Check if favorited
+        favorites = Favorites()
+        is_favorited = favorites.is_favorited(str(product_id))
+
+        return render_template("product.html", product=product, is_favorited=is_favorited)
 
     except ProductHuntAPIError as e:
         return render_template(
