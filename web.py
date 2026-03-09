@@ -5,6 +5,7 @@ Web 应用模块 / Web Application Module
 """
 
 from flask import Flask, render_template, jsonify, request, redirect, url_for, Response
+from flask_cors import CORS
 from typing import Dict, Any, List, Optional
 import config
 from api import APIClient, ProductHuntAPIError, RateLimitError
@@ -18,6 +19,19 @@ from statistics import Statistics
 # 创建 Flask 应用 / Create Flask application
 app = Flask(__name__)
 app.config["SECRET_KEY"] = config.SECRET_KEY
+
+# 启用 CORS 支持 / Enable CORS support
+CORS(app, resources={
+    r"/api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    },
+    r"/rss": {
+        "origins": "*",
+        "methods": ["GET"]
+    }
+})
 
 # 初始化 API 客户端和存储 / Initialize API client and storage
 api_client = APIClient()
