@@ -255,6 +255,9 @@ def main():
     # 添加子命令 / Add subcommands
     subparsers = parser.add_subparsers(dest="command", help="可用命令")
 
+    # version 命令 / version command
+    version_parser = subparsers.add_parser("version", help="显示版本信息")
+
     # fetch 命令 / fetch command
     fetch_parser = subparsers.add_parser("fetch", help="获取 Product Hunt 热门产品")
     fetch_parser.add_argument(
@@ -322,6 +325,13 @@ def main():
     clear_cache_parser = cache_subparsers.add_parser("clear", help="清除缓存")
     info_cache_parser = cache_subparsers.add_parser("info", help="查看缓存信息")
 
+    # 添加版本参数 / Add version argument
+    parser.add_argument(
+        "-v", "--version",
+        action="version",
+        version=f"{config.APP_NAME} v{config.APP_VERSION}"
+    )
+
     # 解析参数 / Parse arguments
     args = parser.parse_args()
 
@@ -331,7 +341,10 @@ def main():
         return
 
     # 执行相应命令 / Execute corresponding command
-    if args.command == "fetch":
+    if args.command == "version":
+        print(f"{config.APP_NAME} v{config.APP_VERSION}")
+
+    elif args.command == "fetch":
         fetch_products(limit=args.limit, save=not args.no_save)
 
     elif args.command == "export":
