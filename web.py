@@ -23,6 +23,36 @@ storage = Storage()
 webhook_notifier = WebhookNotifier()
 
 
+@app.route("/health")
+def health_check():
+    """
+    健康检查端点 / Health check endpoint
+    检查 API 配置和缓存状态 / Check API configuration and cache status
+    """
+    health_status = {
+        "status": "healthy",
+        "api_configured": bool(config.PRODUCT_HUNT_TOKEN),
+        "cache": {},
+        "version": config.APP_VERSION
+    }
+
+    # 检查缓存状态 / Check cache status
+    try:
+        cache_info = storage.get_cache_info()
+        health_status["cache"] = cache_info
+    except Exception as e:
+        health_status["cache"] = {"error": str(e)}
+        health_status["status"] = "degraded"
+
+    # 如果未配置 API Token，返回警告状态 / Return warning status if API token not configured
+    if not config.PRODUCT_HUNT_TOKEN:
+        health_status["status"] = "warning"
+        health_status["message"] = "API Token 未配置，部分功能可能不可用"
+
+    status_code = 200 if health_status["status"] == "healthy" else 206
+    return jsonify(health_status), status_code
+
+
 @app.route("/")
 def index():
     """
