@@ -80,7 +80,7 @@ def export_products(format: str = "json", output: str = "products.json"):
     导出产品数据 / Export products data
 
     Args:
-        format: 导出格式 (json) / Export format
+        format: 导出格式 (json/csv) / Export format
         output: 输出文件名 / Output filename
     """
     print(f"正在导出产品数据到 {output}...")
@@ -94,7 +94,11 @@ def export_products(format: str = "json", output: str = "products.json"):
             return
 
         output_path = BASE_DIR / output
-        storage.export_to_json(output_path)
+
+        if format == "csv":
+            storage.export_to_csv(output_path)
+        else:
+            storage.export_to_json(output_path)
 
     except StorageError as e:
         print(f"导出错误: {e}")
@@ -124,6 +128,108 @@ def run_web(debug: bool = False):
 
     print(f"启动 GetBeel Web 服务 (调试模式: {debug})")
     run_server(debug=debug)
+
+
+def fetch_historical_products(date: str, limit: int = 20):
+    """
+    获取历史产品数据 / Fetch historical products data
+
+    Args:
+        date: 日期字符串 (YYYY-MM-DD) / Date string (YYYY-MM-DD)
+        limit: 获取数量限制 / Fetch quantity limit
+    """
+    print(f"正在获取 {date} 的 Product Hunt 产品...")
+
+    try:
+        api_client = APIClient()
+        storage = Storage()
+
+        # 获取历史产品数据 / Fetch historical products data
+        products = api_client.get_products_by_date(date, limit=limit)
+
+        if not products:
+            print(f"未获取到 {date} 的产品数据")
+            return
+
+        print(f"成功获取 {len(products)} 个产品")
+
+        # 解析产品数据 / Parse products data
+        parsed_products = Parser.parse_products(products)
+        formatted_products = [
+            Parser.format_product_for_display(p) for p in parsed_products
+        ]
+
+        # 显示产品列表 / Display products list
+        print("\n" + "=" * 60)
+        print(f"Product Hunt {date} 热门产品")
+        print("=" * 60)
+
+        for i, product in enumerate(formatted_products, 1):
+            print(f"\n{i}. {product['name']}")
+            print(f"   描述: {product['tagline']}")
+            print(f"   投票: {product['votes_count']} | 评论: {product['comments_count']}")
+            print(f"   创作者: {product['makers']}")
+            print(f"   链接: {product['url']}")
+
+        # 保存到缓存 / Save to cache
+        storage.save_historical_products(products, date)
+        print(f"\n历史数据已保存到缓存 ({date})")
+
+    except ProductHuntAPIError as e:
+        print(f"API 错误: {e}")
+    except RateLimitError as e:
+        print(f"速率限制: {e}")
+    except Exception as e:
+        print(f"未知错误: {e}")
+
+
+def list_historical_products():
+    """列出所有历史数据 / List all historical data"""
+    try:
+        storage = Storage()
+        dates = storage.get_all_historical_dates()
+
+        if not dates:
+            print("暂无历史数据")
+            return
+
+        print("历史数据日期列表:")
+        for date in dates:
+            products = storage.get_historical_products(date)
+            print(f"  {date}: {len(products)} 个产品")
+
+    except Exception as e:
+        print(f"错误: {e}")
+
+
+def run_scheduler():
+    """运行定时任务 / Run scheduler"""
+    try:
+        import schedule
+        import time as time_module
+
+        print("启动定时数据采集任务...")
+        print(f"采集间隔: {config.SCHEDULER_INTERVAL_HOURS} 小时")
+
+        # 定时获取今日热门产品 / Scheduled fetch today's popular products
+        def fetch_task():
+            print("\n执行定时任务: 获取今日热门产品")
+            fetch_products(limit=30, save=True)
+
+        # 设置定时任务 / Set schedule
+        schedule.every(config.SCHEDULER_INTERVAL_HOURS).hours.do(fetch_task)
+
+        # 立即执行一次 / Execute once immediately
+        fetch_task()
+
+        while True:
+            schedule.run_pending()
+            time_module.sleep(60)
+
+    except ImportError:
+        print("请安装 schedule 库: pip install schedule")
+    except Exception as e:
+        print(f"定时任务错误: {e}")
 
 
 def main():
@@ -171,6 +277,35 @@ def main():
         default="products.json",
         help="输出文件名 (默认: products.json)"
     )
+    export_parser.add_argument(
+        "-f", "--format",
+        type=str,
+        choices=["json", "csv"],
+        default="json",
+        help="导出格式 (默认: json)"
+    )
+
+    # history 命令 / history command
+    history_parser = subparsers.add_parser("history", help="历史产品数据管理")
+    history_parser.add_argument(
+        "-d", "--date",
+        type=str,
+        help="指定日期 (YYYY-MM-DD)"
+    )
+    history_parser.add_argument(
+        "-l", "--limit",
+        type=int,
+        default=20,
+        help="获取产品数量 (默认: 20)"
+    )
+    history_parser.add_argument(
+        "--list",
+        action="store_true",
+        help="列出所有历史数据"
+    )
+
+    # scheduler 命令 / scheduler command
+    scheduler_parser = subparsers.add_parser("scheduler", help="启动定时任务")
 
     # web 命令 / web command
     web_parser = subparsers.add_parser("web", help="启动 Web 服务器")
@@ -200,7 +335,18 @@ def main():
         fetch_products(limit=args.limit, save=not args.no_save)
 
     elif args.command == "export":
-        export_products(output=args.output)
+        export_products(format=args.format, output=args.output)
+
+    elif args.command == "history":
+        if args.list:
+            list_historical_products()
+        elif args.date:
+            fetch_historical_products(date=args.date, limit=args.limit)
+        else:
+            parser.print_help()
+
+    elif args.command == "scheduler":
+        run_scheduler()
 
     elif args.command == "web":
         run_web(debug=args.debug)

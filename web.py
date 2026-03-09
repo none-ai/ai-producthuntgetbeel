@@ -4,12 +4,14 @@ Web 应用模块 / Web Application Module
 使用 Flask 构建的 Web 界面 / Web interface built with Flask
 """
 
-from flask import Flask, render_template, jsonify, request, redirect, url_for
+from flask import Flask, render_template, jsonify, request, redirect, url_for, Response
 from typing import Dict, Any, List, Optional
 import config
 from api import APIClient, ProductHuntAPIError, RateLimitError
 from storage import Storage
 from parser import Parser, Product
+from rss import RSSFeed
+from webhook import WebhookNotifier
 
 # 创建 Flask 应用 / Create Flask application
 app = Flask(__name__)
@@ -18,6 +20,7 @@ app.config["SECRET_KEY"] = "getbeel-secret-key-change-in-production"
 # 初始化 API 客户端和存储 / Initialize API client and storage
 api_client = APIClient()
 storage = Storage()
+webhook_notifier = WebhookNotifier()
 
 
 @app.route("/")
@@ -38,6 +41,7 @@ def products():
     sort_by = request.args.get("sort", "votes")
     min_votes = int(request.args.get("min_votes", "0"))
     category = request.args.get("category", "today")
+    topic = request.args.get("topic", "")
 
     # 从缓存获取数据 / Get data from cache
     products = storage.get_products(category)
@@ -53,6 +57,10 @@ def products():
                 "error.html",
                 error_message=f"获取产品数据失败: {str(e)}"
             )
+
+    # 按话题过滤 / Filter by topic
+    if topic:
+        products = [p for p in products if topic.lower() in p.get("topics", "").lower()]
 
     # 排序 / Sort
     if sort_by == "votes":
@@ -70,8 +78,59 @@ def products():
         "products.html",
         products=products,
         sort_by=sort_by,
-        min_votes=min_votes
+        min_votes=min_votes,
+        current_topic=topic
     )
+
+
+@app.route("/history")
+def history():
+    """
+    历史产品页面 / Historical products page
+    """
+    # 获取所有历史日期 / Get all historical dates
+    dates = storage.get_all_historical_dates()
+    selected_date = request.args.get("date", "")
+
+    products = []
+    if selected_date:
+        products = storage.get_historical_products(selected_date)
+
+    return render_template(
+        "history.html",
+        dates=dates,
+        selected_date=selected_date,
+        products=products
+    )
+
+
+@app.route("/rss")
+def rss_feed():
+    """
+    RSS 订阅源 / RSS Feed
+    """
+    # 获取产品数据 / Get products data
+    products = storage.get_products("today")
+
+    if not products:
+        try:
+            raw_products = api_client.get_today_products(limit=20)
+            storage.save_products(raw_products, category="today")
+            products = storage.get_products("today")
+        except (ProductHuntAPIError, RateLimitError):
+            products = []
+
+    # 生成 RSS / Generate RSS
+    feed = RSSFeed()
+    feed.add_products(products)
+
+    format_type = request.args.get("format", "rss")
+    if format_type == "atom":
+        xml = feed.get_atom_feed()
+    else:
+        xml = feed.generate()
+
+    return Response(xml, mimetype="application/rss+xml")
 
 
 @app.route("/api/products")
@@ -113,6 +172,10 @@ def api_refresh():
         raw_products = api_client.get_today_products(limit=20)
         storage.save_products(raw_products, "today")
 
+        # 发送 webhook 通知 / Send webhook notification
+        products = storage.get_products("today")
+        webhook_notifier.send_notification(products)
+
         return jsonify({
             "success": True,
             "message": "数据刷新成功",
@@ -124,6 +187,29 @@ def api_refresh():
             "success": False,
             "error": str(e)
         }), 500
+
+
+@app.route("/api/webhook/test", methods=["POST"])
+def api_webhook_test():
+    """
+    测试 Webhook / Test Webhook
+    """
+    data = request.get_json() or {}
+    webhook_url = data.get("webhook_url", config.WEBHOOK_URL)
+
+    if not webhook_url:
+        return jsonify({
+            "success": False,
+            "error": "未提供 Webhook URL"
+        }), 400
+
+    from webhook import test_webhook
+    success = test_webhook(webhook_url)
+
+    return jsonify({
+        "success": success,
+        "message": "测试成功" if success else "测试失败"
+    })
 
 
 @app.route("/product/<product_id>")

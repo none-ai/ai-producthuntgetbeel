@@ -9,10 +9,15 @@ GetBeel 是一个用于获取和展示 Product Hunt 每日热门产品的 Python
 ## 功能特性
 
 - 获取 Product Hunt 今日热门产品
+- 支持历史产品数据获取（指定日期）
 - 支持数据缓存，提高访问速度
 - Web 界面展示，友好用户体验
-- 支持数据导出（JSON 格式）
+- 支持数据导出（JSON、CSV 格式）
+- RSS 订阅源支持
+- 支持话题/分类过滤
 - 命令行和 Web 两种运行模式
+- 定时自动数据采集
+- Webhook 通知支持
 
 ## 项目结构
 
@@ -24,13 +29,16 @@ getbeel/
 ├── parser.py            # 数据解析器
 ├── storage.py           # 数据存储模块
 ├── web.py               # Flask Web 应用
+├── rss.py               # RSS 订阅源生成器
+├── webhook.py           # Webhook 通知模块
 ├── requirements.txt     # 项目依赖
 ├── templates/          # HTML 模板目录
 │   ├── index.html
 │   ├── products.html
 │   ├── product.html
 │   ├── error.html
-│   └── cache.html
+│   ├── cache.html
+│   └── history.html
 └── data/               # 数据存储目录（自动创建）
     └── cache.json
 ```
@@ -105,11 +113,35 @@ python web.py
 | `fetch -l 50` | 获取50个产品 |
 | `fetch --no-save` | 获取但不保存到缓存 |
 | `export` | 导出产品数据到 JSON |
+| `export -f csv` | 导出为 CSV 格式 |
 | `export -o file.json` | 指定输出文件名 |
+| `history -d 2024-01-15` | 获取指定日期的历史产品 |
+| `history --list` | 列出所有历史数据 |
+| `scheduler` | 启动定时数据采集任务 |
 | `web` | 启动 Web 服务器 |
 | `web -d` | 调试模式启动 |
 | `cache clear` | 清除所有缓存 |
 | `cache info` | 查看缓存信息 |
+
+## 新增功能
+
+### RSS 订阅源
+访问 `http://localhost:5000/rss` 获取 RSS 订阅源
+- 支持 RSS 2.0 格式
+- 支持 Atom 格式（`?format=atom`）
+
+### Webhook 通知
+配置环境变量启用 Webhook 通知：
+```bash
+export WEBHOOK_URL="your-webhook-url"
+export WEBHOOK_ENABLED="true"
+```
+
+### 话题过滤
+在产品列表页面可以使用话题过滤：
+```
+/products?topic=AI
+```
 
 ## 环境变量
 
@@ -119,6 +151,10 @@ python web.py
 | `DEBUG` | 调试模式 | `False` |
 | `HOST` | Web 服务器地址 | `0.0.0.0` |
 | `PORT` | Web 服务器端口 | `5000` |
+| `WEBHOOK_URL` | Webhook 通知 URL | - |
+| `WEBHOOK_ENABLED` | 启用 Webhook | `False` |
+| `SCHEDULER_ENABLED` | 启用定时任务 | `False` |
+| `SCHEDULER_INTERVAL_HOURS` | 定时任务间隔（小时） | `6` |
 
 ## API 说明
 
@@ -128,12 +164,16 @@ python web.py
 - **parser.py**: 数据解析器，将原始 API 数据转换为结构化格式
 - **storage.py**: 本地存储模块，提供缓存和数据导出功能
 - **web.py**: Flask Web 应用，提供 Web 界面
+- **rss.py**: RSS 订阅源生成器
+- **webhook.py**: Webhook 通知模块
 
 ### 主要类
 
 - `APIClient`: Product Hunt API 客户端类
 - `Parser`: 数据解析器类
 - `Storage`: 数据存储类
+- `RSSFeed`: RSS 订阅源生成类
+- `WebhookNotifier`: Webhook 通知类
 
 ## 依赖
 
@@ -141,6 +181,7 @@ python web.py
 - requests >= 2.28.0
 - flask >= 2.3.0
 - python-dotenv >= 1.0.0
+- schedule >= 1.2.0
 - beautifulsoup4 >= 4.12.0 (可选)
 
 ## 注意事项
@@ -149,6 +190,4 @@ python web.py
 2. 缓存有效期为 24 小时
 3. 建议在生产环境修改 `config.py` 中的 `SECRET_KEY`
 
-## 许可证
-
-MIT License
+作者: stlin256的openclaw

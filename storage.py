@@ -6,6 +6,7 @@
 
 import json
 import os
+import csv
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any, Optional
@@ -214,3 +215,95 @@ class Storage:
 
         except (json.JSONDecodeError, IOError) as e:
             raise StorageError(f"导入失败: {e}")
+
+    def export_to_csv(self, filepath: Path, category: str = "today") -> None:
+        """
+        导出数据到 CSV 文件 / Export data to CSV file
+
+        Args:
+            filepath: 导出文件路径 / Export file path
+            category: 数据分类 / Data category
+        """
+        products = self.get_products(category)
+
+        try:
+            with open(filepath, "w", encoding="utf-8-sig", newline="") as f:
+                fieldnames = ["id", "name", "tagline", "description", "url",
+                              "votes_count", "comments_count", "makers", "topics", "published_at"]
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+
+                for product in products:
+                    writer.writerow({
+                        "id": product.get("id", ""),
+                        "name": product.get("name", ""),
+                        "tagline": product.get("tagline", ""),
+                        "description": product.get("description", ""),
+                        "url": product.get("url", ""),
+                        "votes_count": product.get("votes_raw", ""),
+                        "comments_count": product.get("comments_raw", ""),
+                        "makers": product.get("makers", ""),
+                        "topics": product.get("topics", ""),
+                        "published_at": product.get("published_at", "")
+                    })
+
+            print(f"已导出 {len(products)} 个产品到 {filepath}")
+        except IOError as e:
+            raise StorageError(f"导出失败: {e}")
+
+    def save_historical_products(self, products: List[Product], date: str) -> None:
+        """
+        保存历史产品数据 / Save historical products data
+
+        Args:
+            products: 产品列表 / Products list
+            date: 日期字符串 (YYYY-MM-DD) / Date string (YYYY-MM-DD)
+        """
+        category = f"history_{date}"
+        cache = self._load_cache()
+
+        parsed_products = Parser.parse_products(products)
+        formatted_products = [
+            Parser.format_product_for_display(p) for p in parsed_products
+        ]
+
+        cache[category] = {
+            "data": formatted_products,
+            "updated_at": datetime.now().isoformat(),
+            "count": len(formatted_products),
+            "date": date
+        }
+
+        self._save_cache(cache)
+        print(f"已保存 {len(formatted_products)} 个历史产品到缓存 ({date})")
+
+    def get_historical_products(self, date: str) -> List[Dict[str, Any]]:
+        """
+        获取历史产品数据 / Get historical products data
+
+        Args:
+            date: 日期字符串 (YYYY-MM-DD) / Date string (YYYY-MM-DD)
+
+        Returns:
+            产品列表 / Products list
+        """
+        category = f"history_{date}"
+        return self.get_products(category)
+
+    def get_all_historical_dates(self) -> List[str]:
+        """
+        获取所有历史数据的日期列表 / Get all historical data dates
+
+        Returns:
+            日期列表 / Date list
+        """
+        cache = self._load_cache()
+        dates = []
+
+        for category, data in cache.items():
+            if category.startswith("history_") and isinstance(data, dict):
+                date = data.get("date", "")
+                if date:
+                    dates.append(date)
+
+        return sorted(dates, reverse=True)

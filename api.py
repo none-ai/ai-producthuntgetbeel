@@ -223,3 +223,103 @@ class APIClient:
             return [edge.get("node", {}) for edge in edges]
         except ProductHuntAPIError:
             return []
+
+    def get_products_by_date(self, date: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        获取指定日期的产品列表 / Get products for a specific date
+
+        Args:
+            date: 日期字符串 (YYYY-MM-DD) / Date string (YYYY-MM-DD)
+            limit: 返回数量限制 / Return quantity limit
+
+        Returns:
+            产品列表 / Products list
+        """
+        # 构建日期范围 / Build date range
+        from datetime import datetime, timedelta
+        try:
+            target_date = datetime.strptime(date, "%Y-%m-%d")
+            next_date = target_date + timedelta(days=1)
+            date_after = target_date.strftime("%Y-%m-%dT00:00:00Z")
+            date_before = next_date.strftime("%Y-%m-%dT00:00:00Z")
+        except ValueError:
+            raise ProductHuntAPIError("日期格式错误，请使用 YYYY-MM-DD 格式")
+
+        query = """
+        query GetPostsByDate($dateAfter: Datetime!, $dateBefore: Datetime!, $first: Int!) {
+            posts(postedAfter: $dateAfter, postedBefore: $dateBefore, order: VOTES, first: $first) {
+                edges {
+                    node {
+                        id
+                        name
+                        tagline
+                        description
+                        url
+                        votesCount
+                        commentsCount
+                        thumbnail {
+                            url
+                        }
+                        maker {
+                            name
+                            username
+                        }
+                        publishedAt
+                        topics {
+                            edges {
+                                node {
+                                    name
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """
+
+        try:
+            data = self._make_request(query, {
+                "dateAfter": date_after,
+                "dateBefore": date_before,
+                "first": limit
+            })
+
+            products = []
+            edges = data.get("posts", {}).get("edges", [])
+
+            for edge in edges:
+                node = edge.get("node", {})
+                products.append(node)
+
+            return products
+        except ProductHuntAPIError:
+            return []
+
+    def get_categories(self) -> List[Dict[str, Any]]:
+        """
+        获取产品分类列表 / Get categories list
+
+        Returns:
+            分类列表 / Categories list
+        """
+        query = """
+        query {
+            topics(first: 50) {
+                edges {
+                    node {
+                        id
+                        name
+                        slug
+                    }
+                }
+            }
+        }
+        """
+
+        try:
+            data = self._make_request(query)
+            edges = data.get("topics", {}).get("edges", [])
+            return [edge.get("node", {}) for edge in edges]
+        except ProductHuntAPIError:
+            return []

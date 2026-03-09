@@ -13,5 +13,8 @@ python-dotenv>=1.0.0
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
 
+# 定时任务
+schedule>=1.2.0
+
 # 可选依赖
 # pyyaml>=6.0  # 用于配置文件

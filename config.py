@@ -70,3 +70,50 @@ query {
 # 分页配置 / Pagination Configuration
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
+
+# 历史产品查询 / Historical Products Query
+GET_PRODUCTS_BY_DATE_QUERY = """
+query GetPosts($date: String!, $first: Int!) {
+    posts(postedAfter: $date, postedBefore: $date, order: VOTES, first: $first) {
+        edges {
+            node {
+                id
+                name
+                tagline
+                description
+                url
+                votesCount
+                commentsCount
+                thumbnail {
+                    url
+                }
+                maker {
+                    name
+                    username
+                }
+                publishedAt
+                topics {
+                    edges {
+                        node {
+                            name
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
+# RSS 配置 / RSS Configuration
+RSS_FEED_TITLE = "Product Hunt 热门产品"
+RSS_FEED_DESCRIPTION = "Product Hunt 每日热门产品排行"
+RSS_FEED_AUTHOR = "GetBeel"
+
+# 定时任务配置 / Scheduler Configuration
+SCHEDULER_ENABLED = os.getenv("SCHEDULER_ENABLED", "False").lower() == "true"
+SCHEDULER_INTERVAL_HOURS = int(os.getenv("SCHEDULER_INTERVAL_HOURS", "6"))
+
+# Webhook 配置 / Webhook Configuration
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
+WEBHOOK_ENABLED = os.getenv("WEBHOOK_ENABLED", "False").lower() == "true"
