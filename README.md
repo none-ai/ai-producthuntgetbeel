@@ -151,6 +151,7 @@ export WEBHOOK_ENABLED="true"
 | `DEBUG` | 调试模式 | `False` |
 | `HOST` | Web 服务器地址 | `0.0.0.0` |
 | `PORT` | Web 服务器端口 | `5000` |
+| `SECRET_KEY` | Flask 密钥（生产环境请修改） | - |
 | `WEBHOOK_URL` | Webhook 通知 URL | - |
 | `WEBHOOK_ENABLED` | 启用 Webhook | `False` |
 | `SCHEDULER_ENABLED` | 启用定时任务 | `False` |

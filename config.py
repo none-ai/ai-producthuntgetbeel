@@ -24,6 +24,7 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 # Flask 配置 / Flask Configuration
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "5000"))
+SECRET_KEY = os.getenv("SECRET_KEY", "getbeel-secret-key-change-in-production")
 
 # 数据配置 / Data Configuration
 CACHE_FILE = BASE_DIR / "data" / "cache.json"

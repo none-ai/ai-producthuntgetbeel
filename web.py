@@ -12,10 +12,12 @@ from storage import Storage
 from parser import Parser, Product
 from rss import RSSFeed
 from webhook import WebhookNotifier
+from favorites import Favorites
+from statistics import Statistics
 
 # 创建 Flask 应用 / Create Flask application
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "getbeel-secret-key-change-in-production"
+app.config["SECRET_KEY"] = config.SECRET_KEY
 
 # 初始化 API 客户端和存储 / Initialize API client and storage
 api_client = APIClient()
