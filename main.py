@@ -242,15 +242,19 @@ def run_web(debug: bool = False):
     run_server(debug=debug)
 
 
-def fetch_historical_products(date: str, limit: int = 20):
+def fetch_historical_products(date: str, limit: int = 20, topic: str = None):
     """
     获取历史产品数据 / Fetch historical products data
 
     Args:
         date: 日期字符串 (YYYY-MM-DD) / Date string (YYYY-MM-DD)
         limit: 获取数量限制 / Fetch quantity limit
+        topic: 话题过滤 / Topic filter
     """
     print(f"正在获取 {date} 的 Product Hunt 产品...")
+
+    if topic:
+        print(f"话题过滤: {topic}")
 
     try:
         api_client = APIClient()
@@ -267,13 +271,25 @@ def fetch_historical_products(date: str, limit: int = 20):
 
         # 解析产品数据 / Parse products data
         parsed_products = Parser.parse_products(products)
+
+        # 按话题过滤 / Filter by topic
+        if topic:
+            topic_lower = topic.lower()
+            filtered = []
+            for p in parsed_products:
+                topics = p.get('topics', [])
+                if any(topic_lower in t.lower() for t in topics):
+                    filtered.append(p)
+            parsed_products = filtered
+            print(f"话题过滤后剩余 {len(parsed_products)} 个产品")
+
         formatted_products = [
             Parser.format_product_for_display(p) for p in parsed_products
         ]
 
         # 显示产品列表 / Display products list
         print("\n" + "=" * 60)
-        print(f"Product Hunt {date} 热门产品")
+        print(f"Product Hunt {date} 热门产品{f' - {topic}' if topic else ''}")
         print("=" * 60)
 
         for i, product in enumerate(formatted_products, 1):
@@ -591,6 +607,11 @@ def main():
         help="获取产品数量 (默认: 20)"
     )
     history_parser.add_argument(
+        "-t", "--topic",
+        type=str,
+        help="按话题过滤 (例如: AI, design, productivity)"
+    )
+    history_parser.add_argument(
         "--list",
         action="store_true",
         help="列出所有历史数据"
@@ -686,7 +707,7 @@ def main():
         if args.list:
             list_historical_products()
         elif args.date:
-            fetch_historical_products(date=args.date, limit=args.limit)
+            fetch_historical_products(date=args.date, limit=args.limit, topic=args.topic)
         else:
             parser.print_help()
 
