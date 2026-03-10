@@ -21,7 +21,7 @@ from search import SearchEngine
 from maker import Maker, TrendingProducts
 
 
-def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet: bool = False, json_output: bool = False):
+def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet: bool = False, json_output: bool = False, min_votes: int = 0):
     """
     获取产品数据（命令行模式）/ Fetch products (CLI mode)
 
@@ -31,6 +31,7 @@ def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet:
         topic: 话题过滤 / Topic filter
         quiet: 静默模式，减少输出 / Quiet mode, reduce output
         json_output: 是否以 JSON 格式输出 / Whether to output in JSON format
+        min_votes: 最低投票数过滤 / Minimum votes filter
 
     Returns:
     """
@@ -40,6 +41,9 @@ def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet:
 
     if topic and not quiet:
         print(f"话题过滤: {topic}")
+
+    if min_votes > 0 and not quiet:
+        print(f"最低投票数过滤: {min_votes}")
 
     try:
         # 初始化 API 客户端 / Initialize API client
@@ -72,6 +76,13 @@ def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet:
             if not quiet:
                 print(f"话题过滤后剩余 {len(parsed_products)} 个产品")
 
+        # 按最低投票数过滤 / Filter by minimum votes
+        if min_votes > 0:
+            filtered = [p for p in parsed_products if p.get('votes_count', 0) >= min_votes]
+            parsed_products = filtered
+            if not quiet:
+                print(f"最低投票数过滤后剩余 {len(parsed_products)} 个产品")
+
         formatted_products = [
             Parser.format_product_for_display(p) for p in parsed_products
         ]
@@ -81,6 +92,7 @@ def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet:
             output_data = {
                 "date": "today",
                 "topic": topic,
+                "min_votes": min_votes,
                 "count": len(formatted_products),
                 "products": formatted_products
             }
@@ -89,8 +101,13 @@ def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet:
 
         # 显示产品列表 / Display products list
         if not quiet:
+            filter_desc = ""
+            if topic:
+                filter_desc += f" - {topic}"
+            if min_votes > 0:
+                filter_desc += f" (投票数≥{min_votes})"
             print("\n" + "=" * 60)
-            print(f"Product Hunt 今日热门产品{f' - {topic}' if topic else ''}")
+            print(f"Product Hunt 今日热门产品{filter_desc}")
             print("=" * 60)
 
             for i, product in enumerate(formatted_products, 1):
@@ -1106,6 +1123,12 @@ def main():
         action="store_true",
         help="以 JSON 格式输出产品数据"
     )
+    fetch_parser.add_argument(
+        "-v", "--min-votes",
+        type=int,
+        default=0,
+        help="按最低投票数过滤 (默认: 0，不过滤)"
+    )
 
     # export 命令 / export command
     export_parser = subparsers.add_parser("export", help="导出产品数据")
@@ -1350,7 +1373,7 @@ def main():
         show_statistics(json_output=args.json)
 
     elif args.command == "fetch":
-        fetch_products(limit=args.limit, save=not args.no_save, topic=args.topic, quiet=args.quiet, json_output=args.json)
+        fetch_products(limit=args.limit, save=not args.no_save, topic=args.topic, quiet=args.quiet, json_output=args.json, min_votes=args.min_votes)
 
     elif args.command == "export":
         export_products(format=args.format, output=args.output, json_output=args.json)
