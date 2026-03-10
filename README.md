@@ -152,6 +152,13 @@ python web.py
 | `maker trending` | 热门话题排行 |
 | `maker trending -d 30` | 最近30天话题 |
 | `maker trending --json` | JSON格式输出话题排行 |
+| `email` | 发送产品邮件通知 |
+| `email -l 20` | 发送包含20个产品的邮件 |
+| `alert list` | 列出所有产品提醒 |
+| `alert add <name> -t 100` | 添加投票数阈值提醒 |
+| `alert add <name> -t 50 -type comments` | 添加评论数阈值提醒 |
+| `alert remove <name>` | 移除产品提醒 |
+| `alert check` | 检查并显示触发的提醒 |
 
 ## 新增功能
 
@@ -173,6 +180,39 @@ export WEBHOOK_ENABLED="true"
 /products?topic=AI
 ```
 
+### 邮件通知
+配置 SMTP 环境变量后，可以发送产品邮件通知：
+```bash
+export SMTP_HOST="smtp.example.com"
+export SMTP_USER="your-email@example.com"
+export SMTP_PASSWORD="your-password"
+export TO_EMAIL="recipient@example.com"
+```
+发送邮件通知：
+```bash
+python main.py email
+python main.py email -l 20  # 发送20个产品
+```
+
+### 产品提醒
+可以设置产品提醒，当产品达到阈值时通知：
+```bash
+# 添加投票数提醒
+python main.py alert add "ChatGPT" -t 500
+
+# 添加评论数提醒
+python main.py alert add "ChatGPT" -t 100 -type comments
+
+# 查看所有提醒
+python main.py alert list
+
+# 检查提醒
+python main.py alert check
+
+# 移除提醒
+python main.py alert remove "ChatGPT"
+```
+
 ## 环境变量
 
 | 变量名 | 说明 | 默认值 |
@@ -186,6 +226,12 @@ export WEBHOOK_ENABLED="true"
 | `WEBHOOK_ENABLED` | 启用 Webhook | `False` |
 | `SCHEDULER_ENABLED` | 启用定时任务 | `False` |
 | `SCHEDULER_INTERVAL_HOURS` | 定时任务间隔（小时） | `6` |
+| `SMTP_HOST` | SMTP 服务器地址 | - |
+| `SMTP_PORT` | SMTP 服务器端口 | `587` |
+| `SMTP_USER` | SMTP 用户名 | - |
+| `SMTP_PASSWORD` | SMTP 密码 | - |
+| `FROM_EMAIL` | 发件人邮箱 | - |
+| `TO_EMAIL` | 收件人邮箱 | - |
 
 ## API 说明
 
@@ -197,6 +243,7 @@ export WEBHOOK_ENABLED="true"
 - **web.py**: Flask Web 应用，提供 Web 界面
 - **rss.py**: RSS 订阅源生成器
 - **webhook.py**: Webhook 通知模块
+- **notification.py**: 邮件通知和产品提醒模块
 
 ### 主要类
 

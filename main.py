@@ -19,6 +19,7 @@ from parser import Parser
 from favorites import Favorites
 from search import SearchEngine
 from maker import Maker, TrendingProducts
+from notification import EmailNotifier, ProductAlert
 
 
 def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet: bool = False, json_output: bool = False, min_votes: int = 0):
@@ -1048,6 +1049,159 @@ def show_trending_topics(days: int = 7, json_output: bool = False):
         print(f"获取热门话题失败: {e}")
 
 
+def send_email_notification(products_limit: int = 10):
+    """
+    发送产品邮件通知 / Send product email notification
+
+    Args:
+        products_limit: 产品数量限制 / Products limit
+    """
+    try:
+        notifier = EmailNotifier()
+
+        if not notifier.is_configured():
+            print("邮件配置不完整，请检查以下环境变量:")
+            print("  - SMTP_HOST")
+            print("  - SMTP_USER")
+            print("  - SMTP_PASSWORD")
+            print("  - TO_EMAIL")
+            return
+
+        # 获取今日热门产品 / Fetch today's products
+        api_client = APIClient()
+        products = api_client.get_today_products(limit=products_limit)
+
+        if not products:
+            print("未获取到产品数据")
+            return
+
+        # 解析产品数据 / Parse products data
+        parser = Parser()
+        parsed_products = parser.parse_products(products)
+
+        # 发送邮件通知 / Send email notification
+        success = notifier.send_products_notification(parsed_products)
+
+        if success:
+            print(f"邮件通知已发送，包含 {len(parsed_products)} 个产品")
+        else:
+            print("邮件通知发送失败")
+
+    except Exception as e:
+        print(f"发送邮件通知失败: {e}")
+
+
+def list_alerts():
+    """列出所有产品提醒 / List all product alerts"""
+    try:
+        alert_system = ProductAlert()
+        alerts = alert_system.get_alerts()
+
+        if not alerts:
+            print("暂无产品提醒")
+            print("使用 'alert add' 命令添加提醒")
+            return
+
+        print(f"\n{'=' * 60}")
+        print(f"产品提醒列表 (共 {len(alerts)} 个)")
+        print(f"{'=' * 60}\n")
+
+        for i, alert in enumerate(alerts, 1):
+            print(f"{i}. 产品: {alert['product_name']}")
+            print(f"   类型: {alert['alert_type']}")
+            print(f"   阈值: {alert['threshold']}")
+            print(f"   创建时间: {alert['created_at']}")
+            print()
+
+    except Exception as e:
+        print(f"获取提醒列表失败: {e}")
+
+
+def add_alert(product_name: str, threshold: int, alert_type: str = "votes"):
+    """
+    添加产品提醒 / Add product alert
+
+    Args:
+        product_name: 产品名称 / Product name
+        threshold: 阈值 / Threshold
+        alert_type: 提醒类型 (votes/comments) / Alert type
+    """
+    try:
+        alert_system = ProductAlert()
+        success = alert_system.add_alert(product_name, threshold, alert_type)
+
+        if success:
+            print(f"提醒添加成功: {product_name} (阈值: {threshold}, 类型: {alert_type})")
+        else:
+            print(f"提醒已存在: {product_name} ({alert_type})")
+
+    except Exception as e:
+        print(f"添加提醒失败: {e}")
+
+
+def remove_alert(product_name: str, alert_type: str = "votes"):
+    """
+    移除产品提醒 / Remove product alert
+
+    Args:
+        product_name: 产品名称 / Product name
+        alert_type: 提醒类型 / Alert type
+    """
+    try:
+        alert_system = ProductAlert()
+        success = alert_system.remove_alert(product_name, alert_type)
+
+        if success:
+            print(f"提醒移除成功: {product_name} ({alert_type})")
+        else:
+            print(f"提醒不存在: {product_name} ({alert_type})")
+
+    except Exception as e:
+        print(f"移除提醒失败: {e}")
+
+
+def check_alerts():
+    """检查产品提醒 / Check product alerts"""
+    try:
+        alert_system = ProductAlert()
+
+        # 获取今日热门产品 / Fetch today's products
+        api_client = APIClient()
+        products = api_client.get_today_products(limit=50)
+
+        if not products:
+            print("未获取到产品数据")
+            return
+
+        # 解析产品数据 / Parse products data
+        parser = Parser()
+        parsed_products = parser.parse_products(products)
+
+        # 检查提醒 / Check alerts
+        triggered = alert_system.check_alerts(parsed_products)
+
+        if not triggered:
+            print("暂无触发的提醒")
+            return
+
+        print(f"\n{'=' * 60}")
+        print(f"触发的提醒 (共 {len(triggered)} 个)")
+        print(f"{'=' * 60}\n")
+
+        for item in triggered:
+            product = item['product']
+            alert = item['alert']
+            current = item['current_value']
+
+            print(f"产品: {product.get('name')}")
+            print(f"  阈值: {alert['threshold']} | 当前: {current}")
+            print(f"  链接: {product.get('url')}")
+            print()
+
+    except Exception as e:
+        print(f"检查提醒失败: {e}")
+
+
 def main():
     """
     主函数 / Main function
@@ -1347,6 +1501,57 @@ def main():
         help="以 JSON 格式输出"
     )
 
+    # email 命令 / email command
+    email_parser = subparsers.add_parser("email", help="邮件通知")
+    email_parser.add_argument(
+        "-l", "--limit",
+        type=int,
+        default=10,
+        help="产品数量限制 (默认: 10)"
+    )
+
+    # alert 命令 / alert command
+    alert_parser = subparsers.add_parser("alert", help="产品提醒管理")
+    alert_subparsers = alert_parser.add_subparsers(dest="alert_action")
+
+    list_alert_parser = alert_subparsers.add_parser("list", help="列出所有提醒")
+
+    add_alert_parser = alert_subparsers.add_parser("add", help="添加提醒")
+    add_alert_parser.add_argument(
+        "product_name",
+        type=str,
+        help="产品名称"
+    )
+    add_alert_parser.add_argument(
+        "-t", "--threshold",
+        type=int,
+        required=True,
+        help="阈值 (投票数或评论数)"
+    )
+    add_alert_parser.add_argument(
+        "-type", "--type",
+        type=str,
+        choices=["votes", "comments"],
+        default="votes",
+        help="提醒类型 (默认: votes)"
+    )
+
+    remove_alert_parser = alert_subparsers.add_parser("remove", help="移除提醒")
+    remove_alert_parser.add_argument(
+        "product_name",
+        type=str,
+        help="产品名称"
+    )
+    remove_alert_parser.add_argument(
+        "-type", "--type",
+        type=str,
+        choices=["votes", "comments"],
+        default="votes",
+        help="提醒类型 (默认: votes)"
+    )
+
+    check_alert_parser = alert_subparsers.add_parser("check", help="检查提醒")
+
     # 添加版本参数 / Add version argument
     parser.add_argument(
         "-v", "--version",
@@ -1440,6 +1645,21 @@ def main():
             show_makers(limit=args.limit, json_output=args.json)
         elif args.maker_action == "trending":
             show_trending_topics(days=args.days, json_output=args.json)
+        else:
+            parser.print_help()
+
+    elif args.command == "email":
+        send_email_notification(products_limit=args.limit)
+
+    elif args.command == "alert":
+        if args.alert_action == "list":
+            list_alerts()
+        elif args.alert_action == "add":
+            add_alert(args.product_name, args.threshold, args.type)
+        elif args.alert_action == "remove":
+            remove_alert(args.product_name, args.type)
+        elif args.alert_action == "check":
+            check_alerts()
         else:
             parser.print_help()
 
