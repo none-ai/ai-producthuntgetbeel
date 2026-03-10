@@ -436,11 +436,57 @@ def search_products(query: str, limit: int = 20):
         print(f"搜索失败: {e}")
 
 
-def show_status():
+def show_status(json_output: bool = False):
     """
     显示应用状态 / Show application status
     显示 API 配置、缓存、定时任务等信息 / Display API configuration, cache, scheduler and other information
+
+    Args:
+        json_output: 是否以 JSON 格式输出 / Whether to output in JSON format
     """
+    import json
+
+    # 缓存状态 / Cache status
+    cache_info = {}
+    try:
+        storage = Storage()
+        cache_data = storage.get_cache_info()
+        if cache_data:
+            for category, data in cache_data.items():
+                cache_info[category] = {
+                    "count": data['count'],
+                    "updated_at": data['updated_at']
+                }
+    except Exception as e:
+        pass
+
+    status_data = {
+        "app_name": config.APP_NAME,
+        "version": config.APP_VERSION,
+        "api": {
+            "token_configured": bool(config.PRODUCT_HUNT_TOKEN),
+            "token_preview": config.PRODUCT_HUNT_TOKEN[:10] + "..." if config.PRODUCT_HUNT_TOKEN and len(config.PRODUCT_HUNT_TOKEN) > 10 else (config.PRODUCT_HUNT_TOKEN if config.PRODUCT_HUNT_TOKEN else None)
+        },
+        "cache": cache_info if cache_info else None,
+        "scheduler": {
+            "enabled": config.SCHEDULER_ENABLED,
+            "interval_hours": config.SCHEDULER_INTERVAL_HOURS
+        },
+        "webhook": {
+            "enabled": config.WEBHOOK_ENABLED,
+            "url_configured": bool(config.WEBHOOK_URL)
+        },
+        "service": {
+            "host": config.HOST,
+            "port": config.PORT,
+            "debug": config.DEBUG
+        }
+    }
+
+    if json_output:
+        print(json.dumps(status_data, ensure_ascii=False, indent=2))
+        return
+
     print(f"\n{'=' * 50}")
     print(f"{config.APP_NAME} v{config.APP_VERSION} 状态信息")
     print(f"{'=' * 50}\n")
@@ -456,16 +502,11 @@ def show_status():
 
     # 缓存状态 / Cache status
     print("\n缓存状态:")
-    try:
-        storage = Storage()
-        cache_info = storage.get_cache_info()
-        if cache_info:
-            for category, data in cache_info.items():
-                print(f"   - {category}: {data['count']} 个产品 (更新于: {data['updated_at']})")
-        else:
-            print("   暂无缓存数据")
-    except Exception as e:
-        print(f"   获取缓存信息失败: {e}")
+    if cache_info:
+        for category, data in cache_info.items():
+            print(f"   - {category}: {data['count']} 个产品 (更新于: {data['updated_at']})")
+    else:
+        print("   暂无缓存数据")
 
     # 定时任务状态 / Scheduler status
     print("\n定时任务:")
@@ -660,6 +701,11 @@ def main():
 
     # status 命令 / status command
     status_parser = subparsers.add_parser("status", help="显示应用状态")
+    status_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式输出状态信息"
+    )
 
     # stats 命令 / stats command
     stats_parser = subparsers.add_parser("stats", help="显示产品统计数据")
@@ -818,7 +864,7 @@ def main():
         show_version()
 
     elif args.command == "status":
-        show_status()
+        show_status(json_output=args.json)
 
     elif args.command == "stats":
         show_statistics()
