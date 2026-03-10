@@ -372,16 +372,16 @@ def show_status():
     print(f"{'=' * 50}\n")
 
     # API 配置状态 / API configuration status
-    print("📡 API 配置:")
+    print("API 配置:")
     if config.PRODUCT_HUNT_TOKEN:
         token_preview = config.PRODUCT_HUNT_TOKEN[:10] + "..." if len(config.PRODUCT_HUNT_TOKEN) > 10 else config.PRODUCT_HUNT_TOKEN
-        print(f"   ✅ API Token: 已配置 ({token_preview})")
+        print(f"   API Token: 已配置 ({token_preview})")
     else:
-        print(f"   ❌ API Token: 未配置")
-        print(f"   💡 请设置环境变量 PRODUCT_HUNT_TOKEN")
+        print(f"   API Token: 未配置")
+        print(f"   请设置环境变量 PRODUCT_HUNT_TOKEN")
 
     # 缓存状态 / Cache status
-    print("\n💾 缓存状态:")
+    print("\n缓存状态:")
     try:
         storage = Storage()
         cache_info = storage.get_cache_info()
@@ -391,26 +391,73 @@ def show_status():
         else:
             print("   暂无缓存数据")
     except Exception as e:
-        print(f"   ❌ 获取缓存信息失败: {e}")
+        print(f"   获取缓存信息失败: {e}")
 
     # 定时任务状态 / Scheduler status
-    print("\n⏰ 定时任务:")
-    print(f"   启用状态: {'✅ 已启用' if config.SCHEDULER_ENABLED else '❌ 未启用'}")
+    print("\n定时任务:")
+    print(f"   启用状态: {'是' if config.SCHEDULER_ENABLED else '否'}")
     if config.SCHEDULER_ENABLED:
         print(f"   采集间隔: {config.SCHEDULER_INTERVAL_HOURS} 小时")
 
     # Webhook 状态 / Webhook status
-    print("\n🔗 Webhook:")
-    print(f"   启用状态: {'✅ 已启用' if config.WEBHOOK_ENABLED else '❌ 未启用'}")
+    print("\nWebhook:")
+    print(f"   启用状态: {'是' if config.WEBHOOK_ENABLED else '否'}")
     if config.WEBHOOK_URL:
         url_preview = config.WEBHOOK_URL[:30] + "..." if len(config.WEBHOOK_URL) > 30 else config.WEBHOOK_URL
         print(f"   Webhook URL: {url_preview}")
 
     # 服务配置 / Service configuration
-    print("\n🌐 服务配置:")
+    print("\n服务配置:")
     print(f"   Host: {config.HOST}")
     print(f"   Port: {config.PORT}")
     print(f"   Debug: {'是' if config.DEBUG else '否'}")
+
+    print(f"\n{'=' * 50}\n")
+
+
+def show_statistics():
+    """
+    显示产品统计数据 / Show product statistics
+    """
+    from statistics import Statistics
+
+    print(f"\n{'=' * 50}")
+    print(f"产品统计数据")
+    print(f"{'=' * 50}\n")
+
+    try:
+        stats = Statistics()
+
+        # 总体统计 / Total statistics
+        total_stats = stats.get_total_stats()
+        print("总体统计:")
+        print(f"   总获取次数: {total_stats['total_fetches']}")
+        print(f"   总产品数: {total_stats['total_products']}")
+        print(f"   平均每次获取产品数: {total_stats['avg_products_per_fetch']:.1f}")
+
+        # 每日统计 / Daily statistics
+        daily_stats = stats.get_daily_stats(days=7)
+        if daily_stats:
+            print("\n最近7天获取统计:")
+            for day in daily_stats:
+                print(f"   {day['date']}: {day['products']} 个产品 ({day['fetches']} 次)")
+
+        # 热门产品 / Top products
+        top_products = stats.get_top_products(limit=5)
+        if top_products:
+            print("\n热门产品 (按投票数):")
+            for i, p in enumerate(top_products, 1):
+                print(f"   {i}. {p['name']}: {p['votes']} 票, {p['comments']} 评论")
+
+        # 分类分布 / Category distribution
+        category_dist = stats.get_category_distribution()
+        if category_dist:
+            print("\n话题分布 (Top 5):")
+            for i, (cat, count) in enumerate(list(category_dist.items())[:5], 1):
+                print(f"   {i}. {cat}: {count} 个产品")
+
+    except Exception as e:
+        print(f"获取统计数据失败: {e}")
 
     print(f"\n{'=' * 50}\n")
 
@@ -475,6 +522,9 @@ def main():
 
     # status 命令 / status command
     status_parser = subparsers.add_parser("status", help="显示应用状态")
+
+    # stats 命令 / stats command
+    stats_parser = subparsers.add_parser("stats", help="显示产品统计数据")
 
     # fetch 命令 / fetch command
     fetch_parser = subparsers.add_parser("fetch", help="获取 Product Hunt 热门产品")
@@ -601,6 +651,9 @@ def main():
 
     elif args.command == "status":
         show_status()
+
+    elif args.command == "stats":
+        show_statistics()
 
     elif args.command == "fetch":
         fetch_products(limit=args.limit, save=not args.no_save)
