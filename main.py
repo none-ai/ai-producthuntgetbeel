@@ -5,6 +5,7 @@ GetBeel 主入口文件 / GetBeel Main Entry Point
 """
 
 import sys
+import os
 import argparse
 from pathlib import Path
 
@@ -784,6 +785,140 @@ def show_status(json_output: bool = False):
     print(f"\n{'=' * 50}\n")
 
 
+def show_config(json_output: bool = False, validate: bool = False):
+    """
+    显示和验证配置 / Show and validate configuration
+    显示当前配置信息并可选择验证配置是否有效 / Display current configuration and optionally validate if it's valid
+
+    Args:
+        json_output: 是否以 JSON 格式输出 / Whether to output in JSON format
+        validate: 是否验证配置 / Whether to validate configuration
+    """
+    import json
+
+    # 获取 SMTP 配置 / Get SMTP configuration
+    smtp_host = os.environ.get("SMTP_HOST", "")
+    smtp_user = os.environ.get("SMTP_USER", "")
+    from_email = os.environ.get("FROM_EMAIL", "")
+    to_email = os.environ.get("TO_EMAIL", "")
+
+    config_data = {
+        "app": {
+            "name": config.APP_NAME,
+            "version": config.APP_VERSION,
+            "debug": config.DEBUG
+        },
+        "api": {
+            "product_hunt_token": "已配置" if config.PRODUCT_HUNT_TOKEN else "未配置",
+            "api_url": config.PRODUCT_HUNT_API_URL,
+            "timeout": config.REQUEST_TIMEOUT,
+            "max_retries": config.MAX_RETRIES
+        },
+        "storage": {
+            "cache_file": str(config.CACHE_FILE),
+            "data_dir": str(config.DATA_DIR)
+        },
+        "scheduler": {
+            "enabled": config.SCHEDULER_ENABLED,
+            "interval_hours": config.SCHEDULER_INTERVAL_HOURS
+        },
+        "webhook": {
+            "enabled": config.WEBHOOK_ENABLED,
+            "url_configured": bool(config.WEBHOOK_URL)
+        },
+        "smtp": {
+            "host_configured": bool(smtp_host),
+            "user_configured": bool(smtp_user),
+            "from_email_configured": bool(from_email),
+            "to_email_configured": bool(to_email)
+        },
+        "web": {
+            "host": config.HOST,
+            "port": config.PORT,
+            "secret_key_configured": bool(config.SECRET_KEY and config.SECRET_KEY != "getbeel-secret-key-change-in-production")
+        }
+    }
+
+    if json_output:
+        print(json.dumps(config_data, ensure_ascii=False, indent=2))
+        return
+
+    print(f"\n{'=' * 50}")
+    print(f"GetBeel 配置信息")
+    print(f"{'=' * 50}")
+
+    # 应用信息 / App info
+    print(f"\n应用信息:")
+    print(f"   名称: {config_data['app']['name']}")
+    print(f"   版本: {config_data['app']['version']}")
+    print(f"   调试模式: {'是' if config_data['app']['debug'] else '否'}")
+
+    # API 配置 / API configuration
+    print(f"\nAPI 配置:")
+    print(f"   Product Hunt Token: {config_data['api']['product_hunt_token']}")
+    print(f"   API URL: {config_data['api']['api_url']}")
+    print(f"   请求超时: {config_data['api']['timeout']} 秒")
+    print(f"   最大重试: {config_data['api']['max_retries']} 次")
+
+    # 存储配置 / Storage configuration
+    print(f"\n存储配置:")
+    print(f"   缓存文件: {config_data['storage']['cache_file']}")
+    print(f"   数据目录: {config_data['storage']['data_dir']}")
+
+    # 定时任务配置 / Scheduler configuration
+    print(f"\n定时任务:")
+    print(f"   启用: {'是' if config_data['scheduler']['enabled'] else '否'}")
+    if config_data['scheduler']['enabled']:
+        print(f"   采集间隔: {config_data['scheduler']['interval_hours']} 小时")
+
+    # Webhook 配置 / Webhook configuration
+    print(f"\nWebhook:")
+    print(f"   启用: {'是' if config_data['webhook']['enabled'] else '否'}")
+    print(f"   URL已配置: {'是' if config_data['webhook']['url_configured'] else '否'}")
+
+    # SMTP 配置 / SMTP configuration
+    print(f"\n邮件通知 (SMTP):")
+    print(f"   SMTP主机: {'已配置' if config_data['smtp']['host_configured'] else '未配置'}")
+    print(f"   SMTP用户: {'已配置' if config_data['smtp']['user_configured'] else '未配置'}")
+    print(f"   发件人: {'已配置' if config_data['smtp']['from_email_configured'] else '未配置'}")
+    print(f"   收件人: {'已配置' if config_data['smtp']['to_email_configured'] else '未配置'}")
+
+    # Web 配置 / Web configuration
+    print(f"\nWeb 服务:")
+    print(f"   Host: {config_data['web']['host']}")
+    print(f"   Port: {config_data['web']['port']}")
+    print(f"   Secret Key: {'已修改' if config_data['web']['secret_key_configured'] else '默认 (建议修改)'}")
+
+    # 验证配置 / Validate configuration
+    if validate:
+        print(f"\n{'=' * 50}")
+        print(f"配置验证结果")
+        print(f"{'=' * 50}")
+
+        issues = []
+
+        if not config.PRODUCT_HUNT_TOKEN:
+            issues.append("未配置 Product Hunt API Token，部分功能将无法使用")
+
+        if config.SCHEDULER_ENABLED and not config.PRODUCT_HUNT_TOKEN:
+            issues.append("定时任务已启用但未配置 API Token，将无法正常工作")
+
+        if config.WEBHOOK_ENABLED and not config.WEBHOOK_URL:
+            issues.append("Webhook 已启用但未配置 URL")
+
+        if config.DEBUG:
+            issues.append("调试模式已启用，生产环境建议关闭")
+
+        if issues:
+            print(f"\n发现 {len(issues)} 个问题:")
+            for i, issue in enumerate(issues, 1):
+                print(f"   {i}. {issue}")
+        else:
+            print(f"\n配置验证通过！")
+
+    print(f"\n{'=' * 50}\n")
+
+
 def show_statistics(json_output: bool = False):
     """
     显示产品统计数据 / Show product statistics
@@ -1241,6 +1376,19 @@ def main():
         help="以 JSON 格式输出状态信息"
     )
 
+    # config 命令 / config command
+    config_parser = subparsers.add_parser("config", help="显示和验证配置")
+    config_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式输出配置信息"
+    )
+    config_parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="验证配置是否有效"
+    )
+
     # stats 命令 / stats command
     stats_parser = subparsers.add_parser("stats", help="显示产品统计数据")
     stats_parser.add_argument(
@@ -1573,6 +1721,9 @@ def main():
 
     elif args.command == "status":
         show_status(json_output=args.json)
+
+    elif args.command == "config":
+        show_config(json_output=args.json, validate=args.validate)
 
     elif args.command == "stats":
         show_statistics(json_output=args.json)
