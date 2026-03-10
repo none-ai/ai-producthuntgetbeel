@@ -262,7 +262,7 @@ def run_web(debug: bool = False):
     run_server(debug=debug)
 
 
-def fetch_historical_products(date: str, limit: int = 20, topic: str = None):
+def fetch_historical_products(date: str, limit: int = 20, topic: str = None, quiet: bool = False, json_output: bool = False):
     """
     获取历史产品数据 / Fetch historical products data
 
@@ -270,10 +270,14 @@ def fetch_historical_products(date: str, limit: int = 20, topic: str = None):
         date: 日期字符串 (YYYY-MM-DD) / Date string (YYYY-MM-DD)
         limit: 获取数量限制 / Fetch quantity limit
         topic: 话题过滤 / Topic filter
+        quiet: 静默模式，减少输出 / Quiet mode, reduce output
+        json_output: 是否以 JSON 格式输出 / Whether to output in JSON format
     """
-    print(f"正在获取 {date} 的 Product Hunt 产品...")
+    import json
+    if not quiet:
+        print(f"正在获取 {date} 的 Product Hunt 产品...")
 
-    if topic:
+    if topic and not quiet:
         print(f"话题过滤: {topic}")
 
     try:
@@ -284,10 +288,12 @@ def fetch_historical_products(date: str, limit: int = 20, topic: str = None):
         products = api_client.get_products_by_date(date, limit=limit)
 
         if not products:
-            print(f"未获取到 {date} 的产品数据")
+            if not quiet:
+                print(f"未获取到 {date} 的产品数据")
             return
 
-        print(f"成功获取 {len(products)} 个产品")
+        if not quiet:
+            print(f"成功获取 {len(products)} 个产品")
 
         # 解析产品数据 / Parse products data
         parsed_products = Parser.parse_products(products)
@@ -301,27 +307,43 @@ def fetch_historical_products(date: str, limit: int = 20, topic: str = None):
                 if any(topic_lower in t.lower() for t in topics):
                     filtered.append(p)
             parsed_products = filtered
-            print(f"话题过滤后剩余 {len(parsed_products)} 个产品")
+            if not quiet:
+                print(f"话题过滤后剩余 {len(parsed_products)} 个产品")
 
         formatted_products = [
             Parser.format_product_for_display(p) for p in parsed_products
         ]
 
-        # 显示产品列表 / Display products list
-        print("\n" + "=" * 60)
-        print(f"Product Hunt {date} 热门产品{f' - {topic}' if topic else ''}")
-        print("=" * 60)
+        # JSON 格式输出 / JSON output
+        if json_output:
+            output_data = {
+                "date": date,
+                "topic": topic,
+                "count": len(formatted_products),
+                "products": formatted_products
+            }
+            print(json.dumps(output_data, ensure_ascii=False, indent=2))
+            # 保存到缓存 / Save to cache
+            storage.save_historical_products(products, date)
+            return
 
-        for i, product in enumerate(formatted_products, 1):
-            print(f"\n{i}. {product['name']}")
-            print(f"   描述: {product['tagline']}")
-            print(f"   投票: {product['votes_count']} | 评论: {product['comments_count']}")
-            print(f"   创作者: {product['makers']}")
-            print(f"   链接: {product['url']}")
+        # 显示产品列表 / Display products list
+        if not quiet:
+            print("\n" + "=" * 60)
+            print(f"Product Hunt {date} 热门产品{f' - {topic}' if topic else ''}")
+            print("=" * 60)
+
+            for i, product in enumerate(formatted_products, 1):
+                print(f"\n{i}. {product['name']}")
+                print(f"   描述: {product['tagline']}")
+                print(f"   投票: {product['votes_count']} | 评论: {product['comments_count']}")
+                print(f"   创作者: {product['makers']}")
+                print(f"   链接: {product['url']}")
 
         # 保存到缓存 / Save to cache
         storage.save_historical_products(products, date)
-        print(f"\n历史数据已保存到缓存 ({date})")
+        if not quiet:
+            print(f"\n历史数据已保存到缓存 ({date})")
 
     except ProductHuntAPIError as e:
         print(f"API 错误: {e}")
@@ -710,6 +732,16 @@ def main():
         action="store_true",
         help="列出所有历史数据"
     )
+    history_parser.add_argument(
+        "-q", "--quiet",
+        action="store_true",
+        help="静默模式，减少输出"
+    )
+    history_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式输出产品数据"
+    )
 
     # scheduler 命令 / scheduler command
     scheduler_parser = subparsers.add_parser("scheduler", help="启动定时任务")
@@ -801,7 +833,7 @@ def main():
         if args.list:
             list_historical_products()
         elif args.date:
-            fetch_historical_products(date=args.date, limit=args.limit, topic=args.topic)
+            fetch_historical_products(date=args.date, limit=args.limit, topic=args.topic, quiet=args.quiet, json_output=args.json)
         else:
             parser.print_help()
 
