@@ -17,6 +17,7 @@ from rss import RSSFeed
 from webhook import WebhookNotifier
 from favorites import Favorites
 from statistics import Statistics
+from search import SearchEngine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -358,6 +359,39 @@ def api_webhook_test():
         "success": success,
         "message": "测试成功" if success else "测试失败"
     })
+
+
+@app.route("/api/search")
+def api_search():
+    """
+    API 端点 - 搜索产品 / API endpoint - Search products
+    支持通过关键词搜索产品 / Support searching products by keyword
+    """
+    query = request.args.get("q", "")
+    limit = int(request.args.get("limit", "20"))
+
+    if not query:
+        return jsonify({
+            "success": False,
+            "error": "请提供搜索关键词"
+        }), 400
+
+    try:
+        search_engine = SearchEngine()
+        results = search_engine.search(query, limit=limit)
+
+        return jsonify({
+            "success": True,
+            "query": query,
+            "data": results,
+            "count": len(results)
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 
 @app.route("/product/<product_id>")
