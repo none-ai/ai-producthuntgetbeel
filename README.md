@@ -122,6 +122,7 @@ python web.py
 | `history --list` | 列出所有历史数据 |
 | `search <keyword>` | 搜索产品 |
 | `search <keyword> -l 10` | 搜索并限制结果数量 |
+| `search <keyword> --json` | 以 JSON 格式输出搜索结果 |
 | `build-index` | 构建搜索索引 |
 | `scheduler` | 启动定时数据采集任务 |
 | `stats` | 显示产品统计数据 |

@@ -393,19 +393,22 @@ def build_search_index():
         return False
 
 
-def search_products(query: str, limit: int = 20):
+def search_products(query: str, limit: int = 20, json_output: bool = False):
     """
     搜索产品 / Search products
 
     Args:
         query: 搜索关键词 / Search query
         limit: 结果数量限制 / Results limit
+        json_output: 是否以 JSON 格式输出 / Whether to output in JSON format
     """
+    import json
     if not query:
         print("请输入搜索关键词")
         return
 
-    print(f"正在搜索: {query}")
+    if not json_output:
+        print(f"正在搜索: {query}")
 
     try:
         search_engine = SearchEngine()
@@ -419,8 +422,21 @@ def search_products(query: str, limit: int = 20):
         results = search_engine.search(query, limit=limit)
 
         if not results:
-            print("未找到匹配的产品")
-            print("提示: 请先运行 fetch 命令获取产品数据")
+            if json_output:
+                print(json.dumps({"query": query, "count": 0, "results": []}, ensure_ascii=False, indent=2))
+            else:
+                print("未找到匹配的产品")
+                print("提示: 请先运行 fetch 命令获取产品数据")
+            return
+
+        # JSON 格式输出 / JSON output
+        if json_output:
+            output_data = {
+                "query": query,
+                "count": len(results),
+                "results": results
+            }
+            print(json.dumps(output_data, ensure_ascii=False, indent=2))
             return
 
         print(f"\n找到 {len(results)} 个匹配结果:")
@@ -834,6 +850,11 @@ def main():
         default=20,
         help="结果数量限制 (默认: 20)"
     )
+    search_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式输出搜索结果"
+    )
 
     # build-index 命令 / build-index command
     index_parser = subparsers.add_parser("build-index", help="构建搜索索引")
@@ -916,7 +937,7 @@ def main():
 
     elif args.command == "search":
         if args.query:
-            search_products(query=args.query, limit=args.limit)
+            search_products(query=args.query, limit=args.limit, json_output=args.json)
         else:
             parser.parse_args(["search", "-h"])
 
