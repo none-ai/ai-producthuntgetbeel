@@ -121,6 +121,9 @@ python web.py
 | `export --json` | 以 JSON 格式输出到标准输出 |
 | `history -d 2024-01-15` | 获取指定日期的历史产品 |
 | `history --list` | 列出所有历史数据 |
+| `yesterday` | 获取昨日热门产品 |
+| `yesterday -l 20` | 获取昨日20个产品 |
+| `yesterday --json` | JSON格式输出昨日产品 |
 | `search <keyword>` | 搜索产品 |
 | `search <keyword> -l 10` | 搜索并限制结果数量 |
 | `search <keyword> --json` | 以 JSON 格式输出搜索结果 |

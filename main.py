@@ -277,6 +277,21 @@ def run_web(debug: bool = False):
     run_server(debug=debug)
 
 
+def fetch_yesterday_products(limit: int = 20, topic: str = None, quiet: bool = False, json_output: bool = False):
+    """
+    获取昨日产品数据 / Fetch yesterday's products data
+
+    Args:
+        limit: 获取数量限制 / Fetch quantity limit
+        topic: 话题过滤 / Topic filter
+        quiet: 静默模式，减少输出 / Quiet mode, reduce output
+        json_output: 是否以 JSON 格式输出 / Whether to output in JSON format
+    """
+    from datetime import datetime, timedelta
+    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    fetch_historical_products(date=yesterday, limit=limit, topic=topic, quiet=quiet, json_output=json_output)
+
+
 def fetch_historical_products(date: str, limit: int = 20, topic: str = None, quiet: bool = False, json_output: bool = False):
     """
     获取历史产品数据 / Fetch historical products data
@@ -957,6 +972,30 @@ def main():
         help="以 JSON 格式输出产品数据"
     )
 
+    # yesterday 命令 / yesterday command
+    yesterday_parser = subparsers.add_parser("yesterday", help="获取昨日热门产品")
+    yesterday_parser.add_argument(
+        "-l", "--limit",
+        type=int,
+        default=20,
+        help="获取产品数量 (默认: 20)"
+    )
+    yesterday_parser.add_argument(
+        "-t", "--topic",
+        type=str,
+        help="按话题过滤 (例如: AI, design, productivity)"
+    )
+    yesterday_parser.add_argument(
+        "-q", "--quiet",
+        action="store_true",
+        help="静默模式，减少输出"
+    )
+    yesterday_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式输出产品数据"
+    )
+
     # scheduler 命令 / scheduler command
     scheduler_parser = subparsers.add_parser("scheduler", help="启动定时任务")
 
@@ -1085,6 +1124,9 @@ def main():
             fetch_historical_products(date=args.date, limit=args.limit, topic=args.topic, quiet=args.quiet, json_output=args.json)
         else:
             parser.print_help()
+
+    elif args.command == "yesterday":
+        fetch_yesterday_products(limit=args.limit, topic=args.topic, quiet=args.quiet, json_output=args.json)
 
     elif args.command == "scheduler":
         run_scheduler()
