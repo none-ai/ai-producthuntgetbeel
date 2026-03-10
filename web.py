@@ -97,24 +97,78 @@ def api_stats():
         "version": config.APP_VERSION,
         "api_configured": bool(config.PRODUCT_HUNT_TOKEN)
     }
-    
+
     # 获取缓存的产品数量
     try:
         products = storage.get_cached_products()
         stats["cached_products"] = len(products)
-        
+
         # 计算统计数据
         total_votes = sum(p.get('votesCount', 0) for p in products)
         total_comments = sum(p.get('commentsCount', 0) for p in products)
-        
+
         stats["total_votes"] = total_votes
         stats["total_comments"] = total_comments
         stats["average_votes"] = round(total_votes / len(products), 1) if products else 0
-        
+
     except Exception as e:
         stats["cache_error"] = str(e)
-    
+
     return jsonify(stats)
+
+
+@app.route("/api/metrics")
+def api_metrics():
+    """
+    Prometheus 风格指标端点 / Prometheus-style metrics endpoint
+    返回可被 Prometheus 采集的指标数据 / Returns metrics data that can be scraped by Prometheus
+    """
+    from flask import make_response
+    import platform
+
+    metrics = []
+
+    # 应用版本指标
+    metrics.append(f'beel_app_version{{version="{config.APP_VERSION}"}} 1')
+
+    # API 配置状态
+    metrics.append(f'beel_api_configured {"1" if config.PRODUCT_HUNT_TOKEN else "0"}')
+
+    # 缓存产品数量
+    try:
+        products = storage.get_cached_products()
+        metrics.append(f'beel_cached_products_count {len(products)}')
+
+        total_votes = sum(p.get('votesCount', 0) for p in products)
+        total_comments = sum(p.get('commentsCount', 0) for p in products)
+        metrics.append(f'beel_total_votes {total_votes}')
+        metrics.append(f'beel_total_comments {total_comments}')
+        if products:
+            metrics.append(f'beel_average_votes {round(total_votes / len(products), 1)}')
+    except Exception:
+        pass
+
+    # 缓存状态
+    try:
+        cache_info = storage.get_cache_info()
+        cache_size = cache_info.get('size', 0)
+        metrics.append(f'beel_cache_size_bytes {cache_size}')
+    except Exception:
+        pass
+
+    # 定时任务状态
+    metrics.append(f'beel_scheduler_enabled {"1" if config.SCHEDULER_ENABLED else "0"}')
+    metrics.append(f'beel_scheduler_interval_hours {config.SCHEDULER_INTERVAL_HOURS}')
+
+    # Webhook 状态
+    metrics.append(f'beel_webhook_enabled {"1" if config.WEBHOOK_ENABLED else "0"}')
+
+    # Python 环境信息
+    metrics.append(f'beel_python_version_info{{version="{platform.python_version()}"}} 1')
+
+    response = make_response("\n".join(metrics) + "\n")
+    response.content_type = "text/plain; charset=utf-8"
+    return response
 
 
 @app.route("/")
