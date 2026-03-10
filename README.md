@@ -122,6 +122,10 @@ python web.py
 | `web -d` | 调试模式启动 |
 | `cache clear` | 清除所有缓存 |
 | `cache info` | 查看缓存信息 |
+| `favorites list` | 查看收藏列表 |
+| `favorites add` | 添加产品到收藏 |
+| `favorites add -i <id>` | 根据ID添加收藏 |
+| `favorites remove -i <id>` | 移除收藏 |
 
 ## 新增功能
 

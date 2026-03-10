@@ -16,6 +16,7 @@ import config
 from api import APIClient, ProductHuntAPIError, RateLimitError
 from storage import Storage, StorageError
 from parser import Parser
+from favorites import Favorites
 
 
 def fetch_products(limit: int = 20, save: bool = True):
@@ -115,6 +116,100 @@ def clear_cache():
 
     except StorageError as e:
         print(f"清除缓存错误: {e}")
+
+
+def list_favorites():
+    """列出所有收藏的产品 / List all favorited products"""
+    try:
+        favorites = Favorites()
+        fav_list = favorites.get_favorites()
+
+        if not fav_list:
+            print("暂无收藏产品")
+            return
+
+        print("\n" + "=" * 60)
+        print("收藏的产品列表")
+        print("=" * 60)
+
+        for i, fav in enumerate(fav_list, 1):
+            print(f"\n{i}. {fav['name']}")
+            print(f"   描述: {fav.get('tagline', 'N/A')}")
+            print(f"   🔥 投票: {fav.get('votes_count', 0)}")
+            print(f"   链接: {fav.get('url', 'N/A')}")
+            print(f"   收藏时间: {fav.get('added_at', 'N/A')}")
+
+        print(f"\n共收藏 {len(fav_list)} 个产品")
+
+    except Exception as e:
+        print(f"错误: {e}")
+
+
+def add_favorite(product_id: str = None):
+    """
+    添加产品到收藏 / Add product to favorites
+
+    Args:
+        product_id: 产品 ID / Product ID
+    """
+    try:
+        favorites = Favorites()
+        storage = Storage()
+
+        # 如果没有提供 ID，从缓存中选择 / If no ID provided, select from cache
+        if not product_id:
+            products = storage.get_products("today")
+            if not products:
+                print("缓存中没有产品数据，请先运行 fetch 命令获取数据")
+                return
+
+            print("请选择要收藏的产品:")
+            for i, p in enumerate(products, 1):
+                print(f"  {i}. {p.get('name', 'N/A')} - {p.get('tagline', 'N/A')}")
+
+            try:
+                choice = int(input("\n请输入产品编号: ")) - 1
+                if choice < 0 or choice >= len(products):
+                    print("无效的选择")
+                    return
+                product = products[choice]
+            except ValueError:
+                print("请输入有效的数字")
+                return
+        else:
+            # 从缓存中查找产品 / Find product from cache
+            products = storage.get_products("today")
+            product = None
+            for p in products:
+                if str(p.get('id')) == str(product_id):
+                    product = p
+                    break
+
+            if not product:
+                print(f"未找到 ID 为 {product_id} 的产品")
+                return
+
+        if favorites.add_favorite(product):
+            print(f"已将 {product.get('name')} 添加到收藏")
+        else:
+            print(f"{product.get('name')} 已经存在于收藏中")
+
+    except Exception as e:
+        print(f"错误: {e}")
+
+
+def remove_favorite(product_id: str):
+    """移除收藏 / Remove from favorites"""
+    try:
+        favorites = Favorites()
+
+        if favorites.remove_favorite(product_id):
+            print(f"已从收藏中移除产品")
+        else:
+            print(f"未找到 ID 为 {product_id} 的收藏")
+
+    except Exception as e:
+        print(f"错误: {e}")
 
 
 def run_web(debug: bool = False):
@@ -378,6 +473,25 @@ def main():
     clear_cache_parser = cache_subparsers.add_parser("clear", help="清除缓存")
     info_cache_parser = cache_subparsers.add_parser("info", help="查看缓存信息")
 
+    # favorites 命令 / favorites command
+    favorites_parser = subparsers.add_parser("favorites", help="收藏管理")
+    favorites_subparsers = favorites_parser.add_subparsers(dest="favorites_action")
+
+    list_favorites_parser = favorites_subparsers.add_parser("list", help="列出收藏的产品")
+    add_favorites_parser = favorites_subparsers.add_parser("add", help="添加收藏")
+    add_favorites_parser.add_argument(
+        "-i", "--id",
+        type=str,
+        help="产品 ID"
+    )
+    remove_favorites_parser = favorites_subparsers.add_parser("remove", help="移除收藏")
+    remove_favorites_parser.add_argument(
+        "-i", "--id",
+        type=str,
+        required=True,
+        help="产品 ID"
+    )
+
     # 添加版本参数 / Add version argument
     parser.add_argument(
         "-v", "--version",
@@ -432,6 +546,16 @@ def main():
                     print(f"  {category}: {data['count']} 个产品 (更新时间: {data['updated_at']})")
             else:
                 print("暂无缓存数据")
+        else:
+            parser.print_help()
+
+    elif args.command == "favorites":
+        if args.favorites_action == "list":
+            list_favorites()
+        elif args.favorites_action == "add":
+            add_favorite(product_id=args.id)
+        elif args.favorites_action == "remove":
+            remove_favorite(product_id=args.id)
         else:
             parser.print_help()
 
