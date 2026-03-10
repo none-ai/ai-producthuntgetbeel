@@ -23,7 +23,7 @@ from maker import Maker, TrendingProducts
 from notification import EmailNotifier, ProductAlert
 
 
-def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet: bool = False, json_output: bool = False, min_votes: int = 0):
+def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet: bool = False, json_output: bool = False, min_votes: int = 0, sort: str = "votes"):
     """
     获取产品数据（命令行模式）/ Fetch products (CLI mode)
 
@@ -34,6 +34,7 @@ def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet:
         quiet: 静默模式，减少输出 / Quiet mode, reduce output
         json_output: 是否以 JSON 格式输出 / Whether to output in JSON format
         min_votes: 最低投票数过滤 / Minimum votes filter
+        sort: 排序方式 / Sort method (votes, comments, date)
 
     Returns:
     """
@@ -85,6 +86,18 @@ def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet:
             if not quiet:
                 print(f"最低投票数过滤后剩余 {len(parsed_products)} 个产品")
 
+        # 排序 / Sort products
+        if sort == "votes":
+            parsed_products.sort(key=lambda p: p.get('votes_count', 0), reverse=True)
+        elif sort == "comments":
+            parsed_products.sort(key=lambda p: p.get('comments_count', 0), reverse=True)
+        elif sort == "date":
+            parsed_products.sort(key=lambda p: p.get('published_at', ''), reverse=True)
+
+        if sort and not quiet:
+            sort_desc = {"votes": "投票数", "comments": "评论数", "date": "日期"}
+            print(f"排序方式: {sort_desc.get(sort, sort)}")
+
         formatted_products = [
             Parser.format_product_for_display(p) for p in parsed_products
         ]
@@ -95,6 +108,7 @@ def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet:
                 "date": "today",
                 "topic": topic,
                 "min_votes": min_votes,
+                "sort": sort,
                 "count": len(formatted_products),
                 "products": formatted_products
             }
@@ -1431,6 +1445,13 @@ def main():
         default=0,
         help="按最低投票数过滤 (默认: 0，不过滤)"
     )
+    fetch_parser.add_argument(
+        "-s", "--sort",
+        type=str,
+        choices=["votes", "comments", "date"],
+        default="votes",
+        help="排序方式: votes(投票数), comments(评论数), date(日期) (默认: votes)"
+    )
 
     # export 命令 / export command
     export_parser = subparsers.add_parser("export", help="导出产品数据")
@@ -1729,7 +1750,7 @@ def main():
         show_statistics(json_output=args.json)
 
     elif args.command == "fetch":
-        fetch_products(limit=args.limit, save=not args.no_save, topic=args.topic, quiet=args.quiet, json_output=args.json, min_votes=args.min_votes)
+        fetch_products(limit=args.limit, save=not args.no_save, topic=args.topic, quiet=args.quiet, json_output=args.json, min_votes=args.min_votes, sort=args.sort)
 
     elif args.command == "export":
         export_products(format=args.format, output=args.output, json_output=args.json)
