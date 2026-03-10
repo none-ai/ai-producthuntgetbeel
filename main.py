@@ -348,7 +348,12 @@ def show_status():
     print(f"   Debug: {'是' if config.DEBUG else '否'}")
 
     print(f"\n{'=' * 50}\n")
-    """运行定时任务 / Run scheduler"""
+
+
+def run_scheduler():
+    """
+    运行定时任务 / Run scheduler
+    """
     try:
         import schedule
         import time as time_module
