@@ -526,6 +526,26 @@ def run_scheduler():
         print(f"定时任务错误: {e}")
 
 
+def show_welcome():
+    """
+    显示欢迎信息和快速开始提示 / Show welcome message and quick start tips
+    """
+    print(f"\n{'=' * 60}")
+    print(f"欢迎使用 {config.APP_NAME} v{config.APP_VERSION}")
+    print(f"{'=' * 60}")
+    print("\n快速开始:")
+    print("  python main.py fetch           获取今日热门产品")
+    print("  python main.py web             启动 Web 服务器")
+    print("  python main.py --help          查看所有命令")
+    print("\n其他命令:")
+    print("  python main.py status          查看应用状态")
+    print("  python main.py stats           查看统计数据")
+    print("  python main.py version         查看版本信息")
+    print("  python main.py cache info      查看缓存信息")
+    print(f"\n{'=' * 60}\n")
+    print("提示: 直接运行 python main.py 也可启动 Web 服务器\n")
+
+
 def show_version():
     """
     显示版本信息 / Show version information
@@ -565,7 +585,7 @@ def show_version():
             deps[dep] = "not installed"
 
     print("\n依赖版本 / Dependencies:")
-    for dep, ver in deps.items():
+    for dep, ver in sorted(deps.items()):
         status = "✓" if ver and ver != "not installed" else "✗"
         print(f"   {status} {dep}: {ver}")
 
@@ -726,9 +746,9 @@ def main():
     # 解析参数 / Parse arguments
     args = parser.parse_args()
 
-    # 如果没有指定命令，默认启动 Web 服务器 / If no command specified, start Web server by default
+    # 如果没有指定命令，显示欢迎信息 / If no command specified, show welcome message
     if args.command is None:
-        run_web()
+        show_welcome()
         return
 
     # 执行相应命令 / Execute corresponding command
