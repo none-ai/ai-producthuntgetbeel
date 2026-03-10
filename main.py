@@ -113,15 +113,19 @@ def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet:
         print(f"未知错误: {e}")
 
 
-def export_products(format: str = "json", output: str = "products.json"):
+def export_products(format: str = "json", output: str = "products.json", json_output: bool = False):
     """
     导出产品数据 / Export products data
 
     Args:
         format: 导出格式 (json/csv) / Export format
         output: 输出文件名 / Output filename
+        json_output: 是否以 JSON 格式输出到标准输出 / Whether to output JSON to stdout
     """
-    print(f"正在导出产品数据到 {output}...")
+    import json
+
+    if not json_output:
+        print(f"正在导出产品数据到 {output}...")
 
     try:
         storage = Storage()
@@ -129,6 +133,16 @@ def export_products(format: str = "json", output: str = "products.json"):
 
         if not products:
             print("缓存中没有产品数据，请先运行 fetch 命令获取数据")
+            return
+
+        # JSON 格式输出到标准输出 / JSON output to stdout
+        if json_output:
+            output_data = {
+                "date": "today",
+                "count": len(products),
+                "products": products
+            }
+            print(json.dumps(output_data, ensure_ascii=False, indent=2))
             return
 
         output_path = BASE_DIR / output
@@ -819,6 +833,11 @@ def main():
         default="json",
         help="导出格式 (默认: json)"
     )
+    export_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式输出到标准输出"
+    )
 
     # history 命令 / history command
     history_parser = subparsers.add_parser("history", help="历史产品数据管理")
@@ -943,7 +962,7 @@ def main():
         fetch_products(limit=args.limit, save=not args.no_save, topic=args.topic, quiet=args.quiet, json_output=args.json)
 
     elif args.command == "export":
-        export_products(format=args.format, output=args.output)
+        export_products(format=args.format, output=args.output, json_output=args.json)
 
     elif args.command == "history":
         if args.list:

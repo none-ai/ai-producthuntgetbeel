@@ -118,6 +118,7 @@ python web.py
 | `export` | 导出产品数据到 JSON |
 | `export -f csv` | 导出为 CSV 格式 |
 | `export -o file.json` | 指定输出文件名 |
+| `export --json` | 以 JSON 格式输出到标准输出 |
 | `history -d 2024-01-15` | 获取指定日期的历史产品 |
 | `history --list` | 列出所有历史数据 |
 | `search <keyword>` | 搜索产品 |
