@@ -114,6 +114,7 @@ python web.py
 | `fetch --no-save` | 获取但不保存到缓存 |
 | `fetch -t AI` | 按话题过滤获取产品 |
 | `fetch --topic design` | 按话题过滤获取产品 |
+| `fetch -q` | 静默模式，减少输出 |
 | `export` | 导出产品数据到 JSON |
 | `export -f csv` | 导出为 CSV 格式 |
 | `export -o file.json` | 指定输出文件名 |

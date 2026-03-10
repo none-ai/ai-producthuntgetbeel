@@ -20,7 +20,7 @@ from favorites import Favorites
 from search import SearchEngine
 
 
-def fetch_products(limit: int = 20, save: bool = True, topic: str = None):
+def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet: bool = False):
     """
     获取产品数据（命令行模式）/ Fetch products (CLI mode)
 
@@ -28,12 +28,14 @@ def fetch_products(limit: int = 20, save: bool = True, topic: str = None):
         limit: 获取数量限制 / Fetch quantity limit
         save: 是否保存到缓存 / Whether to save to cache
         topic: 话题过滤 / Topic filter
+        quiet: 静默模式，减少输出 / Quiet mode, reduce output
 
     Returns:
     """
-    print(f"正在获取 Product Hunt 今日热门产品 (最多 {limit} 个)...")
+    if not quiet:
+        print(f"正在获取 Product Hunt 今日热门产品 (最多 {limit} 个)...")
 
-    if topic:
+    if topic and not quiet:
         print(f"话题过滤: {topic}")
 
     try:
@@ -45,10 +47,12 @@ def fetch_products(limit: int = 20, save: bool = True, topic: str = None):
         products = api_client.get_today_products(limit=limit)
 
         if not products:
-            print("未获取到任何产品数据")
+            if not quiet:
+                print("未获取到任何产品数据")
             return
 
-        print(f"成功获取 {len(products)} 个产品")
+        if not quiet:
+            print(f"成功获取 {len(products)} 个产品")
 
         # 解析产品数据 / Parse products data
         parsed_products = Parser.parse_products(products)
@@ -62,28 +66,31 @@ def fetch_products(limit: int = 20, save: bool = True, topic: str = None):
                 if any(topic_lower in t.lower() for t in topics):
                     filtered.append(p)
             parsed_products = filtered
-            print(f"话题过滤后剩余 {len(parsed_products)} 个产品")
+            if not quiet:
+                print(f"话题过滤后剩余 {len(parsed_products)} 个产品")
 
         formatted_products = [
             Parser.format_product_for_display(p) for p in parsed_products
         ]
 
         # 显示产品列表 / Display products list
-        print("\n" + "=" * 60)
-        print(f"Product Hunt 今日热门产品{f' - {topic}' if topic else ''}")
-        print("=" * 60)
+        if not quiet:
+            print("\n" + "=" * 60)
+            print(f"Product Hunt 今日热门产品{f' - {topic}' if topic else ''}")
+            print("=" * 60)
 
-        for i, product in enumerate(formatted_products, 1):
-            print(f"\n{i}. {product['name']}")
-            print(f"   描述: {product['tagline']}")
-            print(f"   🔥 投票: {product['votes_count']} | 💬 评论: {product['comments_count']}")
-            print(f"   创作者: {product['makers']}")
-            print(f"   链接: {product['url']}")
+            for i, product in enumerate(formatted_products, 1):
+                print(f"\n{i}. {product['name']}")
+                print(f"   描述: {product['tagline']}")
+                print(f"   🔥 投票: {product['votes_count']} | 💬 评论: {product['comments_count']}")
+                print(f"   创作者: {product['makers']}")
+                print(f"   链接: {product['url']}")
 
         # 保存到缓存 / Save to cache
         if save:
             storage.save_products(products)
-            print("\n数据已保存到缓存")
+            if not quiet:
+                print("\n数据已保存到缓存")
 
     except ProductHuntAPIError as e:
         print(f"API 错误: {e}")
@@ -640,6 +647,11 @@ def main():
         type=str,
         help="按话题过滤 (例如: AI, design, productivity)"
     )
+    fetch_parser.add_argument(
+        "-q", "--quiet",
+        action="store_true",
+        help="静默模式，减少输出"
+    )
 
     # export 命令 / export command
     export_parser = subparsers.add_parser("export", help="导出产品数据")
@@ -762,7 +774,7 @@ def main():
         show_statistics()
 
     elif args.command == "fetch":
-        fetch_products(limit=args.limit, save=not args.no_save, topic=args.topic)
+        fetch_products(limit=args.limit, save=not args.no_save, topic=args.topic, quiet=args.quiet)
 
     elif args.command == "export":
         export_products(format=args.format, output=args.output)
