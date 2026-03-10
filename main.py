@@ -202,7 +202,57 @@ def list_historical_products():
         print(f"错误: {e}")
 
 
-def run_scheduler():
+def show_status():
+    """
+    显示应用状态 / Show application status
+    显示 API 配置、缓存、定时任务等信息 / Display API configuration, cache, scheduler and other information
+    """
+    print(f"\n{'=' * 50}")
+    print(f"{config.APP_NAME} v{config.APP_VERSION} 状态信息")
+    print(f"{'=' * 50}\n")
+
+    # API 配置状态 / API configuration status
+    print("📡 API 配置:")
+    if config.PRODUCT_HUNT_TOKEN:
+        token_preview = config.PRODUCT_HUNT_TOKEN[:10] + "..." if len(config.PRODUCT_HUNT_TOKEN) > 10 else config.PRODUCT_HUNT_TOKEN
+        print(f"   ✅ API Token: 已配置 ({token_preview})")
+    else:
+        print(f"   ❌ API Token: 未配置")
+        print(f"   💡 请设置环境变量 PRODUCT_HUNT_TOKEN")
+
+    # 缓存状态 / Cache status
+    print("\n💾 缓存状态:")
+    try:
+        storage = Storage()
+        cache_info = storage.get_cache_info()
+        if cache_info:
+            for category, data in cache_info.items():
+                print(f"   - {category}: {data['count']} 个产品 (更新于: {data['updated_at']})")
+        else:
+            print("   暂无缓存数据")
+    except Exception as e:
+        print(f"   ❌ 获取缓存信息失败: {e}")
+
+    # 定时任务状态 / Scheduler status
+    print("\n⏰ 定时任务:")
+    print(f"   启用状态: {'✅ 已启用' if config.SCHEDULER_ENABLED else '❌ 未启用'}")
+    if config.SCHEDULER_ENABLED:
+        print(f"   采集间隔: {config.SCHEDULER_INTERVAL_HOURS} 小时")
+
+    # Webhook 状态 / Webhook status
+    print("\n🔗 Webhook:")
+    print(f"   启用状态: {'✅ 已启用' if config.WEBHOOK_ENABLED else '❌ 未启用'}")
+    if config.WEBHOOK_URL:
+        url_preview = config.WEBHOOK_URL[:30] + "..." if len(config.WEBHOOK_URL) > 30 else config.WEBHOOK_URL
+        print(f"   Webhook URL: {url_preview}")
+
+    # 服务配置 / Service configuration
+    print("\n🌐 服务配置:")
+    print(f"   Host: {config.HOST}")
+    print(f"   Port: {config.PORT}")
+    print(f"   Debug: {'是' if config.DEBUG else '否'}")
+
+    print(f"\n{'=' * 50}\n")
     """运行定时任务 / Run scheduler"""
     try:
         import schedule
@@ -257,6 +307,9 @@ def main():
 
     # version 命令 / version command
     version_parser = subparsers.add_parser("version", help="显示版本信息")
+
+    # status 命令 / status command
+    status_parser = subparsers.add_parser("status", help="显示应用状态")
 
     # fetch 命令 / fetch command
     fetch_parser = subparsers.add_parser("fetch", help="获取 Product Hunt 热门产品")
@@ -343,6 +396,9 @@ def main():
     # 执行相应命令 / Execute corresponding command
     if args.command == "version":
         print(f"{config.APP_NAME} v{config.APP_VERSION}")
+
+    elif args.command == "status":
+        show_status()
 
     elif args.command == "fetch":
         fetch_products(limit=args.limit, save=not args.no_save)
