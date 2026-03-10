@@ -323,3 +323,75 @@ class APIClient:
             return [edge.get("node", {}) for edge in edges]
         except ProductHuntAPIError:
             return []
+
+    def get_products_by_date_range(self, start_date: str, end_date: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """
+        获取指定日期范围的产品列表 / Get products for a date range
+
+        Args:
+            start_date: 开始日期 (YYYY-MM-DD) / Start date (YYYY-MM-DD)
+            end_date: 结束日期 (YYYY-MM-DD) / End date (YYYY-MM-DD)
+            limit: 返回数量限制 / Return quantity limit
+
+        Returns:
+            产品列表 / Products list
+        """
+        from datetime import datetime, timedelta
+        try:
+            start = datetime.strptime(start_date, "%Y-%m-%d")
+            end = datetime.strptime(end_date, "%Y-%m-%d")
+            date_after = start.strftime("%Y-%m-%dT00:00:00Z")
+            date_before = (end + timedelta(days=1)).strftime("%Y-%m-%dT00:00:00Z")
+        except ValueError:
+            raise ProductHuntAPIError("日期格式错误，请使用 YYYY-MM-DD 格式")
+
+        query = """
+        query GetPostsByDateRange($dateAfter: Datetime!, $dateBefore: Datetime!, $first: Int!) {
+            posts(postedAfter: $dateAfter, postedBefore: $dateBefore, order: VOTES, first: $first) {
+                edges {
+                    node {
+                        id
+                        name
+                        tagline
+                        description
+                        url
+                        votesCount
+                        commentsCount
+                        thumbnail {
+                            url
+                        }
+                        maker {
+                            name
+                            username
+                        }
+                        publishedAt
+                        topics {
+                            edges {
+                                node {
+                                    name
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """
+
+        try:
+            data = self._make_request(query, {
+                "dateAfter": date_after,
+                "dateBefore": date_before,
+                "first": limit
+            })
+
+            products = []
+            edges = data.get("posts", {}).get("edges", [])
+
+            for edge in edges:
+                node = edge.get("node", {})
+                products.append(node)
+
+            return products
+        except ProductHuntAPIError:
+            return []

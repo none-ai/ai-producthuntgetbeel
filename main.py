@@ -292,6 +292,101 @@ def fetch_yesterday_products(limit: int = 20, topic: str = None, quiet: bool = F
     fetch_historical_products(date=yesterday, limit=limit, topic=topic, quiet=quiet, json_output=json_output)
 
 
+def fetch_weekly_products(limit: int = 50, topic: str = None, quiet: bool = False, json_output: bool = False):
+    """
+    获取过去7天的产品数据 / Fetch products from the past 7 days
+
+    Args:
+        limit: 获取数量限制 / Fetch quantity limit
+        topic: 话题过滤 / Topic filter
+        quiet: 静默模式，减少输出 / Quiet mode, reduce output
+        json_output: 是否以 JSON 格式输出 / Whether to output in JSON format
+    """
+    from datetime import datetime, timedelta
+    import json
+
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=7)
+    start_str = start_date.strftime("%Y-%m-%d")
+    end_str = end_date.strftime("%Y-%m-%d")
+
+    if not quiet:
+        print(f"正在获取过去7天 ({start_str} - {end_str}) 的 Product Hunt 产品...")
+
+    if topic and not quiet:
+        print(f"话题过滤: {topic}")
+
+    try:
+        api_client = APIClient()
+        storage = Storage()
+
+        # 获取过去7天的产品数据 / Fetch products from past 7 days
+        products = api_client.get_products_by_date_range(start_str, end_str, limit=limit)
+
+        if not products:
+            if not quiet:
+                print("未获取到任何产品数据")
+            return
+
+        if not quiet:
+            print(f"成功获取 {len(products)} 个产品")
+
+        # 解析产品数据 / Parse products data
+        parsed_products = Parser.parse_products(products)
+
+        # 按话题过滤 / Filter by topic
+        if topic:
+            topic_lower = topic.lower()
+            filtered = []
+            for p in parsed_products:
+                topics = p.get('topics', [])
+                if any(topic_lower in t.lower() for t in topics):
+                    filtered.append(p)
+            parsed_products = filtered
+            if not quiet:
+                print(f"话题过滤后剩余 {len(parsed_products)} 个产品")
+
+        formatted_products = [
+            Parser.format_product_for_display(p) for p in parsed_products
+        ]
+
+        # 按投票数排序 / Sort by votes
+        formatted_products.sort(key=lambda x: x['votes_count'], reverse=True)
+
+        # JSON 格式输出 / JSON output
+        if json_output:
+            output_data = {
+                "start_date": start_str,
+                "end_date": end_str,
+                "topic": topic,
+                "count": len(formatted_products),
+                "products": formatted_products
+            }
+            print(json.dumps(output_data, ensure_ascii=False, indent=2))
+            return
+
+        # 显示产品列表 / Display products list
+        if not quiet:
+            print("\n" + "=" * 60)
+            print(f"Product Hunt 过去7天热门产品{f' - {topic}' if topic else ''}")
+            print(f"({start_str} - {end_str})")
+            print("=" * 60)
+
+            for i, product in enumerate(formatted_products, 1):
+                print(f"\n{i}. {product['name']}")
+                print(f"   描述: {product['tagline']}")
+                print(f"   🔥 投票: {product['votes_count']} | 💬 评论: {product['comments_count']}")
+                print(f"   创作者: {product['makers']}")
+                print(f"   链接: {product['url']}")
+
+    except ProductHuntAPIError as e:
+        print(f"API 错误: {e}")
+    except RateLimitError as e:
+        print(f"速率限制: {e}")
+    except Exception as e:
+        print(f"未知错误: {e}")
+
+
 def fetch_historical_products(date: str, limit: int = 20, topic: str = None, quiet: bool = False, json_output: bool = False):
     """
     获取历史产品数据 / Fetch historical products data
@@ -996,6 +1091,30 @@ def main():
         help="以 JSON 格式输出产品数据"
     )
 
+    # week 命令 / week command
+    week_parser = subparsers.add_parser("week", help="获取过去7天热门产品")
+    week_parser.add_argument(
+        "-l", "--limit",
+        type=int,
+        default=50,
+        help="获取产品数量 (默认: 50)"
+    )
+    week_parser.add_argument(
+        "-t", "--topic",
+        type=str,
+        help="按话题过滤 (例如: AI, design, productivity)"
+    )
+    week_parser.add_argument(
+        "-q", "--quiet",
+        action="store_true",
+        help="静默模式，减少输出"
+    )
+    week_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式输出产品数据"
+    )
+
     # scheduler 命令 / scheduler command
     scheduler_parser = subparsers.add_parser("scheduler", help="启动定时任务")
 
@@ -1127,6 +1246,9 @@ def main():
 
     elif args.command == "yesterday":
         fetch_yesterday_products(limit=args.limit, topic=args.topic, quiet=args.quiet, json_output=args.json)
+
+    elif args.command == "week":
+        fetch_weekly_products(limit=args.limit, topic=args.topic, quiet=args.quiet, json_output=args.json)
 
     elif args.command == "scheduler":
         run_scheduler()

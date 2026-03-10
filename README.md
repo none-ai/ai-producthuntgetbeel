@@ -124,6 +124,10 @@ python web.py
 | `yesterday` | 获取昨日热门产品 |
 | `yesterday -l 20` | 获取昨日20个产品 |
 | `yesterday --json` | JSON格式输出昨日产品 |
+| `week` | 获取过去7天热门产品 |
+| `week -l 50` | 获取过去7天50个产品 |
+| `week --json` | JSON格式输出7天产品 |
+| `week -t AI` | 按话题过滤获取7天产品 |
 | `search <keyword>` | 搜索产品 |
 | `search <keyword> -l 10` | 搜索并限制结果数量 |
 | `search <keyword> --json` | 以 JSON 格式输出搜索结果 |
