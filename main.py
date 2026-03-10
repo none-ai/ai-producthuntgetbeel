@@ -20,17 +20,21 @@ from favorites import Favorites
 from search import SearchEngine
 
 
-def fetch_products(limit: int = 20, save: bool = True):
+def fetch_products(limit: int = 20, save: bool = True, topic: str = None):
     """
     获取产品数据（命令行模式）/ Fetch products (CLI mode)
 
     Args:
         limit: 获取数量限制 / Fetch quantity limit
         save: 是否保存到缓存 / Whether to save to cache
+        topic: 话题过滤 / Topic filter
 
     Returns:
     """
     print(f"正在获取 Product Hunt 今日热门产品 (最多 {limit} 个)...")
+
+    if topic:
+        print(f"话题过滤: {topic}")
 
     try:
         # 初始化 API 客户端 / Initialize API client
@@ -48,13 +52,25 @@ def fetch_products(limit: int = 20, save: bool = True):
 
         # 解析产品数据 / Parse products data
         parsed_products = Parser.parse_products(products)
+
+        # 按话题过滤 / Filter by topic
+        if topic:
+            topic_lower = topic.lower()
+            filtered = []
+            for p in parsed_products:
+                topics = p.get('topics', [])
+                if any(topic_lower in t.lower() for t in topics):
+                    filtered.append(p)
+            parsed_products = filtered
+            print(f"话题过滤后剩余 {len(parsed_products)} 个产品")
+
         formatted_products = [
             Parser.format_product_for_display(p) for p in parsed_products
         ]
 
         # 显示产品列表 / Display products list
         print("\n" + "=" * 60)
-        print("Product Hunt 今日热门产品")
+        print(f"Product Hunt 今日热门产品{f' - {topic}' if topic else ''}")
         print("=" * 60)
 
         for i, product in enumerate(formatted_products, 1):
@@ -539,6 +555,11 @@ def main():
         action="store_true",
         help="不保存到缓存"
     )
+    fetch_parser.add_argument(
+        "-t", "--topic",
+        type=str,
+        help="按话题过滤 (例如: AI, design, productivity)"
+    )
 
     # export 命令 / export command
     export_parser = subparsers.add_parser("export", help="导出产品数据")
@@ -656,7 +677,7 @@ def main():
         show_statistics()
 
     elif args.command == "fetch":
-        fetch_products(limit=args.limit, save=not args.no_save)
+        fetch_products(limit=args.limit, save=not args.no_save, topic=args.topic)
 
     elif args.command == "export":
         export_products(format=args.format, output=args.output)
