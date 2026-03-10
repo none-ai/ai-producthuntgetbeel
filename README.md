@@ -128,6 +128,10 @@ python web.py
 | `week -l 50` | 获取过去7天50个产品 |
 | `week --json` | JSON格式输出7天产品 |
 | `week -t AI` | 按话题过滤获取7天产品 |
+| `month` | 获取过去30天热门产品 |
+| `month -l 100` | 获取过去30天100个产品 |
+| `month --json` | JSON格式输出30天产品 |
+| `month -t AI` | 按话题过滤获取30天产品 |
 | `search <keyword>` | 搜索产品 |
 | `search <keyword> -l 10` | 搜索并限制结果数量 |
 | `search <keyword> --json` | 以 JSON 格式输出搜索结果 |
