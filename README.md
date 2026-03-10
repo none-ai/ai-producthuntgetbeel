@@ -135,6 +135,12 @@ python web.py
 | `favorites add` | 添加产品到收藏 |
 | `favorites add -i <id>` | 根据ID添加收藏 |
 | `favorites remove -i <id>` | 移除收藏 |
+| `maker top` | 热门创作者排行 |
+| `maker top -l 20` | 获取前20名创作者 |
+| `maker top --json` | JSON格式输出创作者排行 |
+| `maker trending` | 热门话题排行 |
+| `maker trending -d 30` | 最近30天话题 |
+| `maker trending --json` | JSON格式输出话题排行 |
 
 ## 新增功能
 

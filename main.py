@@ -18,6 +18,7 @@ from storage import Storage, StorageError
 from parser import Parser
 from favorites import Favorites
 from search import SearchEngine
+from maker import Maker, TrendingProducts
 
 
 def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet: bool = False, json_output: bool = False):
@@ -742,6 +743,89 @@ def show_version(json_output: bool = False):
         print(f"   {status} {dep}: {ver}")
 
 
+def show_makers(limit: int = 10, json_output: bool = False):
+    """
+    显示热门创作者排行 / Show top makers
+
+    Args:
+        limit: 返回数量 / Return count
+        json_output: 是否以 JSON 格式输出 / Whether to output in JSON format
+    """
+    import json
+    try:
+        storage = Storage()
+        products = storage.get_products("today")
+
+        if not products:
+            print("缓存中没有产品数据，请先运行 fetch 命令获取数据")
+            return
+
+        maker = Maker()
+        top_makers = maker.get_top_makers(products, limit=limit)
+
+        if not top_makers:
+            print("未找到创作者信息")
+            return
+
+        if json_output:
+            output_data = {
+                "count": len(top_makers),
+                "makers": top_makers
+            }
+            print(json.dumps(output_data, ensure_ascii=False, indent=2))
+            return
+
+        print(f"\n{'=' * 60}")
+        print(f"热门创作者排行 (Top {limit})")
+        print(f"{'=' * 60}\n")
+
+        for i, m in enumerate(top_makers, 1):
+            print(f"{i}. {m['name']} (@{m['username']})")
+            print(f"   产品数: {m['product_count']} | 总投票: {m['total_votes']} | 总评论: {m['total_comments']}")
+            print()
+
+    except Exception as e:
+        print(f"获取创作者信息失败: {e}")
+
+
+def show_trending_topics(days: int = 7, json_output: bool = False):
+    """
+    显示热门话题/分类 / Show trending topics
+
+    Args:
+        days: 统计天数 / Number of days
+        json_output: 是否以 JSON 格式输出 / Whether to output in JSON format
+    """
+    import json
+    try:
+        trending = TrendingProducts()
+        topics = trending.get_trending_topics(days=days)
+
+        if not topics:
+            print("暂无热门话题数据")
+            print("提示: 请先运行 fetch 命令获取产品数据")
+            return
+
+        if json_output:
+            output_data = {
+                "days": days,
+                "count": len(topics),
+                "topics": topics
+            }
+            print(json.dumps(output_data, ensure_ascii=False, indent=2))
+            return
+
+        print(f"\n{'=' * 60}")
+        print(f"热门话题 (最近 {days} 天)")
+        print(f"{'=' * 60}\n")
+
+        for i, t in enumerate(topics, 1):
+            print(f"{i}. {t['name']}: {t['count']} 个产品")
+
+    except Exception as e:
+        print(f"获取热门话题失败: {e}")
+
+
 def main():
     """
     主函数 / Main function
@@ -933,6 +1017,36 @@ def main():
         help="产品 ID"
     )
 
+    # maker 命令 / maker command
+    maker_parser = subparsers.add_parser("maker", help="创作者信息")
+    maker_subparsers = maker_parser.add_subparsers(dest="maker_action")
+
+    top_makers_parser = maker_subparsers.add_parser("top", help="热门创作者排行")
+    top_makers_parser.add_argument(
+        "-l", "--limit",
+        type=int,
+        default=10,
+        help="返回数量 (默认: 10)"
+    )
+    top_makers_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式输出"
+    )
+
+    trending_parser = maker_subparsers.add_parser("trending", help="热门话题")
+    trending_parser.add_argument(
+        "-d", "--days",
+        type=int,
+        default=7,
+        help="统计天数 (默认: 7)"
+    )
+    trending_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式输出"
+    )
+
     # 添加版本参数 / Add version argument
     parser.add_argument(
         "-v", "--version",
@@ -1009,6 +1123,14 @@ def main():
             add_favorite(product_id=args.id)
         elif args.favorites_action == "remove":
             remove_favorite(product_id=args.id)
+        else:
+            parser.print_help()
+
+    elif args.command == "maker":
+        if args.maker_action == "top":
+            show_makers(limit=args.limit, json_output=args.json)
+        elif args.maker_action == "trending":
+            show_trending_topics(days=args.days, json_output=args.json)
         else:
             parser.print_help()
 
