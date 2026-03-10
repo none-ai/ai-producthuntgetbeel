@@ -668,17 +668,17 @@ def show_welcome():
     print("提示: 直接运行 python main.py 也可启动 Web 服务器\n")
 
 
-def show_version():
+def show_version(json_output: bool = False):
     """
     显示版本信息 / Show version information
     包括应用版本、Python 版本和依赖版本 / Includes app version, Python version and dependency versions
+
+    Args:
+        json_output: 是否以 JSON 格式输出 / Whether to output in JSON format
     """
+    import json
     import platform
     from importlib.metadata import version, PackageNotFoundError
-
-    print(f"\n{config.APP_NAME} v{config.APP_VERSION}")
-    print(f"Python: {platform.python_version()}")
-    print(f"Platform: {platform.platform()}")
 
     # 读取 requirements.txt 并显示所有依赖版本 / Read requirements.txt and show all dependency versions
     requirements_file = BASE_DIR / "requirements.txt"
@@ -705,6 +705,22 @@ def show_version():
             deps[dep] = version(dep)
         except PackageNotFoundError:
             deps[dep] = "not installed"
+
+    version_data = {
+        "app_name": config.APP_NAME,
+        "version": config.APP_VERSION,
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "dependencies": deps
+    }
+
+    if json_output:
+        print(json.dumps(version_data, ensure_ascii=False, indent=2))
+        return
+
+    print(f"\n{config.APP_NAME} v{config.APP_VERSION}")
+    print(f"Python: {platform.python_version()}")
+    print(f"Platform: {platform.platform()}")
 
     print("\n依赖版本 / Dependencies:")
     for dep, ver in sorted(deps.items()):
@@ -737,6 +753,11 @@ def main():
 
     # version 命令 / version command
     version_parser = subparsers.add_parser("version", help="显示版本信息")
+    version_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式输出版本信息"
+    )
 
     # status 命令 / status command
     status_parser = subparsers.add_parser("status", help="显示应用状态")
@@ -910,7 +931,7 @@ def main():
 
     # 执行相应命令 / Execute corresponding command
     if args.command == "version":
-        show_version()
+        show_version(json_output=args.json)
 
     elif args.command == "status":
         show_status(json_output=args.json)
