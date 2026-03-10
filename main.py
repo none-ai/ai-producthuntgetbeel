@@ -530,42 +530,65 @@ def show_status(json_output: bool = False):
     print(f"\n{'=' * 50}\n")
 
 
-def show_statistics():
+def show_statistics(json_output: bool = False):
     """
     显示产品统计数据 / Show product statistics
-    """
-    from statistics import Statistics
 
-    print(f"\n{'=' * 50}")
-    print(f"产品统计数据")
-    print(f"{'=' * 50}\n")
+    Args:
+        json_output: 是否以 JSON 格式输出 / Whether to output in JSON format
+    """
+    import json
+    from statistics import Statistics
 
     try:
         stats = Statistics()
 
         # 总体统计 / Total statistics
         total_stats = stats.get_total_stats()
+        # 每日统计 / Daily statistics
+        daily_stats = stats.get_daily_stats(days=7)
+        # 热门产品 / Top products
+        top_products = stats.get_top_products(limit=5)
+        # 分类分布 / Category distribution
+        category_dist = stats.get_category_distribution()
+
+        stats_data = {
+            "total": {
+                "total_fetches": total_stats['total_fetches'],
+                "total_products": total_stats['total_products'],
+                "avg_products_per_fetch": total_stats['avg_products_per_fetch']
+            },
+            "daily": daily_stats,
+            "top_products": top_products,
+            "category_distribution": dict(list(category_dist.items())[:5]) if category_dist else {}
+        }
+
+        if json_output:
+            print(json.dumps(stats_data, ensure_ascii=False, indent=2))
+            return
+
+        print(f"\n{'=' * 50}")
+        print(f"产品统计数据")
+        print(f"{'=' * 50}\n")
+
         print("总体统计:")
         print(f"   总获取次数: {total_stats['total_fetches']}")
         print(f"   总产品数: {total_stats['total_products']}")
         print(f"   平均每次获取产品数: {total_stats['avg_products_per_fetch']:.1f}")
 
         # 每日统计 / Daily statistics
-        daily_stats = stats.get_daily_stats(days=7)
         if daily_stats:
             print("\n最近7天获取统计:")
             for day in daily_stats:
                 print(f"   {day['date']}: {day['products']} 个产品 ({day['fetches']} 次)")
 
         # 热门产品 / Top products
-        top_products = stats.get_top_products(limit=5)
         if top_products:
             print("\n热门产品 (按投票数):")
             for i, p in enumerate(top_products, 1):
                 print(f"   {i}. {p['name']}: {p['votes']} 票, {p['comments']} 评论")
 
         # 分类分布 / Category distribution
-        category_dist = stats.get_category_distribution()
         if category_dist:
             print("\n话题分布 (Top 5):")
             for i, (cat, count) in enumerate(list(category_dist.items())[:5], 1):
@@ -709,6 +732,11 @@ def main():
 
     # stats 命令 / stats command
     stats_parser = subparsers.add_parser("stats", help="显示产品统计数据")
+    stats_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式输出统计数据"
+    )
 
     # fetch 命令 / fetch command
     fetch_parser = subparsers.add_parser("fetch", help="获取 Product Hunt 热门产品")
@@ -867,7 +895,7 @@ def main():
         show_status(json_output=args.json)
 
     elif args.command == "stats":
-        show_statistics()
+        show_statistics(json_output=args.json)
 
     elif args.command == "fetch":
         fetch_products(limit=args.limit, save=not args.no_save, topic=args.topic, quiet=args.quiet, json_output=args.json)
