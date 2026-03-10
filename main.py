@@ -20,7 +20,7 @@ from favorites import Favorites
 from search import SearchEngine
 
 
-def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet: bool = False):
+def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet: bool = False, json_output: bool = False):
     """
     获取产品数据（命令行模式）/ Fetch products (CLI mode)
 
@@ -29,9 +29,11 @@ def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet:
         save: 是否保存到缓存 / Whether to save to cache
         topic: 话题过滤 / Topic filter
         quiet: 静默模式，减少输出 / Quiet mode, reduce output
+        json_output: 是否以 JSON 格式输出 / Whether to output in JSON format
 
     Returns:
     """
+    import json
     if not quiet:
         print(f"正在获取 Product Hunt 今日热门产品 (最多 {limit} 个)...")
 
@@ -72,6 +74,17 @@ def fetch_products(limit: int = 20, save: bool = True, topic: str = None, quiet:
         formatted_products = [
             Parser.format_product_for_display(p) for p in parsed_products
         ]
+
+        # JSON 格式输出 / JSON output
+        if json_output:
+            output_data = {
+                "date": "today",
+                "topic": topic,
+                "count": len(formatted_products),
+                "products": formatted_products
+            }
+            print(json.dumps(output_data, ensure_ascii=False, indent=2))
+            return
 
         # 显示产品列表 / Display products list
         if not quiet:
@@ -652,6 +665,11 @@ def main():
         action="store_true",
         help="静默模式，减少输出"
     )
+    fetch_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="以 JSON 格式输出产品数据"
+    )
 
     # export 命令 / export command
     export_parser = subparsers.add_parser("export", help="导出产品数据")
@@ -774,7 +792,7 @@ def main():
         show_statistics()
 
     elif args.command == "fetch":
-        fetch_products(limit=args.limit, save=not args.no_save, topic=args.topic, quiet=args.quiet)
+        fetch_products(limit=args.limit, save=not args.no_save, topic=args.topic, quiet=args.quiet, json_output=args.json)
 
     elif args.command == "export":
         export_products(format=args.format, output=args.output)
