@@ -532,29 +532,42 @@ def show_version():
     包括应用版本、Python 版本和依赖版本 / Includes app version, Python version and dependency versions
     """
     import platform
+    from importlib.metadata import version, PackageNotFoundError
 
     print(f"\n{config.APP_NAME} v{config.APP_VERSION}")
     print(f"Python: {platform.python_version()}")
     print(f"Platform: {platform.platform()}")
 
-    # 显示依赖版本 / Show dependency versions
-    deps = {
-        "requests": "requests",
-        "flask": "flask",
-        "beautifulsoup4": "beautifulsoup4",
-    }
+    # 读取 requirements.txt 并显示所有依赖版本 / Read requirements.txt and show all dependency versions
+    requirements_file = BASE_DIR / "requirements.txt"
+    deps = {}
 
-    for dep, import_name in deps.items():
+    if requirements_file.exists():
+        with open(requirements_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                # 跳过注释和空行 / Skip comments and empty lines
+                if not line or line.startswith('#'):
+                    continue
+                # 跳过 Python 版本要求 / Skip Python version requirement
+                if line.startswith('python'):
+                    continue
+                # 解析依赖名称（去除版本号）/ Parse dependency name (remove version)
+                dep_name = line.split('>=')[0].split('==')[0].split('~=')[0].strip()
+                if dep_name:
+                    deps[dep_name] = None  # Placeholder, will be filled with actual version
+
+    # 获取每个依赖的实际版本 / Get actual version for each dependency
+    for dep in deps:
         try:
-            from importlib.metadata import version
-            deps[dep] = version(import_name)
-        except Exception:
+            deps[dep] = version(dep)
+        except PackageNotFoundError:
             deps[dep] = "not installed"
 
     print("\n依赖版本 / Dependencies:")
-    for dep, version in deps.items():
-        status = "✓" if version and version != "not installed" else "✗"
-        print(f"   {status} {dep}: {version}")
+    for dep, ver in deps.items():
+        status = "✓" if ver and ver != "not installed" else "✗"
+        print(f"   {status} {dep}: {ver}")
 
 
 def main():
