@@ -117,6 +117,9 @@ python web.py
 | `export -o file.json` | 指定输出文件名 |
 | `history -d 2024-01-15` | 获取指定日期的历史产品 |
 | `history --list` | 列出所有历史数据 |
+| `search <keyword>` | 搜索产品 |
+| `search <keyword> -l 10` | 搜索并限制结果数量 |
+| `build-index` | 构建搜索索引 |
 | `scheduler` | 启动定时数据采集任务 |
 | `web` | 启动 Web 服务器 |
 | `web -d` | 调试模式启动 |

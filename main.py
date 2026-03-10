@@ -17,6 +17,7 @@ from api import APIClient, ProductHuntAPIError, RateLimitError
 from storage import Storage, StorageError
 from parser import Parser
 from favorites import Favorites
+from search import SearchEngine
 
 
 def fetch_products(limit: int = 20, save: bool = True):
@@ -297,6 +298,70 @@ def list_historical_products():
         print(f"错误: {e}")
 
 
+def build_search_index():
+    """构建搜索索引 / Build search index"""
+    try:
+        storage = Storage()
+        search_engine = SearchEngine()
+
+        # 获取今日产品数据 / Get today's products data
+        products = storage.get_products("today")
+        if not products:
+            print("缓存中没有产品数据，请先运行 fetch 命令获取数据")
+            return False
+
+        search_engine.build_index(products)
+        print(f"搜索索引已构建，包含 {len(products)} 个产品")
+        return True
+
+    except Exception as e:
+        print(f"构建搜索索引失败: {e}")
+        return False
+
+
+def search_products(query: str, limit: int = 20):
+    """
+    搜索产品 / Search products
+
+    Args:
+        query: 搜索关键词 / Search query
+        limit: 结果数量限制 / Results limit
+    """
+    if not query:
+        print("请输入搜索关键词")
+        return
+
+    print(f"正在搜索: {query}")
+
+    try:
+        search_engine = SearchEngine()
+
+        # 先尝试从缓存构建索引 / Try to build index from cache first
+        products = Storage().get_products("today")
+        if products:
+            search_engine.build_index(products)
+
+        # 执行搜索 / Execute search
+        results = search_engine.search(query, limit=limit)
+
+        if not results:
+            print("未找到匹配的产品")
+            print("提示: 请先运行 fetch 命令获取产品数据")
+            return
+
+        print(f"\n找到 {len(results)} 个匹配结果:")
+        print("=" * 60)
+
+        for i, product in enumerate(results, 1):
+            print(f"\n{i}. {product['name']}")
+            print(f"   描述: {product['tagline']}")
+            print(f"   🔥 投票: {product['votes']} | 💬 评论: {product['comments']}")
+            print(f"   链接: {product['url']}")
+
+    except Exception as e:
+        print(f"搜索失败: {e}")
+
+
 def show_status():
     """
     显示应用状态 / Show application status
@@ -463,6 +528,24 @@ def main():
     # scheduler 命令 / scheduler command
     scheduler_parser = subparsers.add_parser("scheduler", help="启动定时任务")
 
+    # search 命令 / search command
+    search_parser = subparsers.add_parser("search", help="搜索产品")
+    search_parser.add_argument(
+        "query",
+        type=str,
+        nargs="?",
+        help="搜索关键词"
+    )
+    search_parser.add_argument(
+        "-l", "--limit",
+        type=int,
+        default=20,
+        help="结果数量限制 (默认: 20)"
+    )
+
+    # build-index 命令 / build-index command
+    index_parser = subparsers.add_parser("build-index", help="构建搜索索引")
+
     # web 命令 / web command
     web_parser = subparsers.add_parser("web", help="启动 Web 服务器")
     web_parser.add_argument(
@@ -535,6 +618,15 @@ def main():
 
     elif args.command == "scheduler":
         run_scheduler()
+
+    elif args.command == "search":
+        if args.query:
+            search_products(query=args.query, limit=args.limit)
+        else:
+            parser.parse_args(["search", "-h"])
+
+    elif args.command == "build-index":
+        build_search_index()
 
     elif args.command == "web":
         run_web(debug=args.debug)
