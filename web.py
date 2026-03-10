@@ -87,6 +87,36 @@ def health_check():
     return jsonify(health_status), status_code
 
 
+@app.route("/api/stats")
+def api_stats():
+    """
+    统计信息端点 / Statistics endpoint
+    返回应用统计信息 / Return application statistics
+    """
+    stats = {
+        "version": config.APP_VERSION,
+        "api_configured": bool(config.PRODUCT_HUNT_TOKEN)
+    }
+    
+    # 获取缓存的产品数量
+    try:
+        products = storage.get_cached_products()
+        stats["cached_products"] = len(products)
+        
+        # 计算统计数据
+        total_votes = sum(p.get('votesCount', 0) for p in products)
+        total_comments = sum(p.get('commentsCount', 0) for p in products)
+        
+        stats["total_votes"] = total_votes
+        stats["total_comments"] = total_comments
+        stats["average_votes"] = round(total_votes / len(products), 1) if products else 0
+        
+    except Exception as e:
+        stats["cache_error"] = str(e)
+    
+    return jsonify(stats)
+
+
 @app.route("/")
 def index():
     """
