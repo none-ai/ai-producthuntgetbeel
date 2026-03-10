@@ -526,6 +526,37 @@ def run_scheduler():
         print(f"定时任务错误: {e}")
 
 
+def show_version():
+    """
+    显示版本信息 / Show version information
+    包括应用版本、Python 版本和依赖版本 / Includes app version, Python version and dependency versions
+    """
+    import platform
+
+    print(f"\n{config.APP_NAME} v{config.APP_VERSION}")
+    print(f"Python: {platform.python_version()}")
+    print(f"Platform: {platform.platform()}")
+
+    # 显示依赖版本 / Show dependency versions
+    deps = {
+        "requests": "requests",
+        "flask": "flask",
+        "beautifulsoup4": "beautifulsoup4",
+    }
+
+    for dep, import_name in deps.items():
+        try:
+            from importlib.metadata import version
+            deps[dep] = version(import_name)
+        except Exception:
+            deps[dep] = "not installed"
+
+    print("\n依赖版本 / Dependencies:")
+    for dep, version in deps.items():
+        status = "✓" if version and version != "not installed" else "✗"
+        print(f"   {status} {dep}: {version}")
+
+
 def main():
     """
     主函数 / Main function
@@ -689,7 +720,7 @@ def main():
 
     # 执行相应命令 / Execute corresponding command
     if args.command == "version":
-        print(f"{config.APP_NAME} v{config.APP_VERSION}")
+        show_version()
 
     elif args.command == "status":
         show_status()
