@@ -4,9 +4,11 @@ Web 应用模块 / Web Application Module
 使用 Flask 构建的 Web 界面 / Web interface built with Flask
 """
 
-from flask import Flask, render_template, jsonify, request, redirect, url_for, Response
+from flask import Flask, render_template, jsonify, request, redirect, url_for, Response, g
 from flask_cors import CORS
 from typing import Dict, Any, List, Optional
+import uuid
+import logging
 import config
 from api import APIClient, ProductHuntAPIError, RateLimitError
 from storage import Storage
@@ -16,9 +18,25 @@ from webhook import WebhookNotifier
 from favorites import Favorites
 from statistics import Statistics
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 # 创建 Flask 应用 / Create Flask application
 app = Flask(__name__)
 app.config["SECRET_KEY"] = config.SECRET_KEY
+
+# Request ID middleware
+@app.before_request
+def before_request():
+    g.request_id = str(uuid.uuid4())[:8]
+    logger.info(f"[{g.request_id}] {request.method} {request.path}")
+
+@app.after_request
+def after_request(response):
+    logger.info(f"[{g.request_id}] Status: {response.status_code}")
+    response.headers['X-Request-ID'] = g.request_id
+    return response
 
 # 启用 CORS 支持 / Enable CORS support
 CORS(app, resources={
