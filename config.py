@@ -118,3 +118,7 @@ SCHEDULER_INTERVAL_HOURS = int(os.getenv("SCHEDULER_INTERVAL_HOURS", "6"))
 # Webhook 配置 / Webhook Configuration
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
 WEBHOOK_ENABLED = os.getenv("WEBHOOK_ENABLED", "False").lower() == "true"
+
+# 代理配置 / Proxy Configuration
+HTTP_PROXY = os.getenv("HTTP_PROXY", "")
+HTTPS_PROXY = os.getenv("HTTPS_PROXY", "")

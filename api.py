@@ -39,10 +39,32 @@ class APIClient:
         self.url = config.PRODUCT_HUNT_API_URL
         self.timeout = config.REQUEST_TIMEOUT
         self.max_retries = config.MAX_RETRIES
+        self.proxy = self._get_proxy()
 
         if not self.token:
             print("警告: 未设置 Product Hunt API Token，请设置 PRODUCT_HUNT_TOKEN 环境变量")
             print("Warning: Product Hunt API Token not set, please set PRODUCT_HUNT_TOKEN env variable")
+
+    def _get_proxy(self) -> Optional[Dict[str, str]]:
+        """
+        获取代理配置 / Get Proxy Configuration
+
+        Returns:
+            代理字典，None 表示不使用代理 / Proxy dictionary, None means no proxy
+        """
+        http_proxy = config.HTTP_PROXY
+        https_proxy = config.HTTPS_PROXY
+
+        if not http_proxy and not https_proxy:
+            return None
+
+        proxies = {}
+        if http_proxy:
+            proxies["http"] = http_proxy
+        if https_proxy:
+            proxies["https"] = https_proxy
+
+        return proxies if proxies else None
 
     def _get_headers(self) -> Dict[str, str]:
         """
@@ -88,7 +110,8 @@ class APIClient:
                 self.url,
                 headers=self._get_headers(),
                 json=payload,
-                timeout=self.timeout
+                timeout=self.timeout,
+                proxies=self.proxy
             )
 
             # 检查 HTTP 状态码 / Check HTTP status code
