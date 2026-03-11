@@ -56,6 +56,7 @@ CORS(app, resources={
 api_client = APIClient()
 storage = Storage()
 webhook_notifier = WebhookNotifier()
+search_engine = SearchEngine()
 
 
 @app.route("/health")
@@ -201,6 +202,8 @@ def products():
             raw_products = api_client.get_today_products(limit=30)
             storage.save_products(raw_products, category="today")
             products = storage.get_products("today")
+            # 自动重建搜索索引 / Auto-build search index
+            search_engine.build_index(products)
         except (ProductHuntAPIError, RateLimitError) as e:
             return render_template(
                 "error.html",
@@ -266,6 +269,8 @@ def rss_feed():
             raw_products = api_client.get_today_products(limit=20)
             storage.save_products(raw_products, category="today")
             products = storage.get_products("today")
+            # 自动重建搜索索引 / Auto-build search index
+            search_engine.build_index(products)
         except (ProductHuntAPIError, RateLimitError):
             products = []
 
@@ -296,6 +301,8 @@ def api_products():
             raw_products = api_client.get_today_products(limit=20)
             storage.save_products(raw_products, "today")
             products = storage.get_products("today")
+            # 自动重建搜索索引 / Auto-build search index
+            search_engine.build_index(products)
 
         return jsonify({
             "success": True,
@@ -324,6 +331,9 @@ def api_refresh():
         # 发送 webhook 通知 / Send webhook notification
         products = storage.get_products("today")
         webhook_notifier.send_notification(products)
+
+        # 自动重建搜索索引 / Auto-build search index
+        search_engine.build_index(products)
 
         return jsonify({
             "success": True,
